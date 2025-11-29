@@ -1,0 +1,29 @@
+name: Get Latest ESStatistikListeModtag File
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  get-latest-esstatistiklistemodtag-file:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout ESStatistikListeParser-GitHub repository
+        uses: actions/checkout@v5
+        with:
+          repository: "${{ github.repository_owner }}/ESStatistikListeParser-GitHub"
+          path: "${{ github.workspace }}/"
+          token: "${{ secrets.PAT }}"
+
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r ${{ github.workspace }}/requirements.txt
+
+      - name: Run GetLatestFile-GitHub script
+        run: |
+          python ${{ github.workspace }}/GetLatestFile-GitHub.py
