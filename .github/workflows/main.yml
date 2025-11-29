@@ -1,0 +1,32 @@
+name: Main Workflow
+
+on:
+  workflow_dispatch:
+
+jobs:
+  # ---- JOBS ---- #
+  get-latest-esstatistiklistemodtag-file:
+    name: Get Latest ESStatistikListeModtag File
+    uses: ./.github/workflows/get-latest-esstatistiklistemodtag-file.yml
+    secrets: inherit
+
+  # ---- TRIGGER NEW WORKFLOW ---- #
+  # trigger-new-workflow:
+  #   name: Trigger New Workflow
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Wait until the next minute
+  #       run: |
+  #         now_sec=$(date -u +%S)
+  #         sleep_for=$((60 - 10#$now_sec))
+
+  #         if [ "$sleep_for" -eq 60 ]; then sleep_for=0; fi
+
+  #         sleep "$sleep_for"
+
+  #     - name: Trigger Workflow Dispatch
+  #       uses: benc-uk/workflow-dispatch@v1
+  #       with:
+  #         workflow: main.yml
+  #         repo: "${{ github.repository }}"
+  #         token: "${{ secrets.PAT }}"
