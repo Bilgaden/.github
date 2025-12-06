@@ -2,13 +2,36 @@ name: Main Workflow
 
 on:
   workflow_dispatch:
+    inputs:
+      discord-upload-limit:
+        description: 'Discord Upload Limit (MiB)'
+        required: true
+        type: string
+        default: '500'
+      github-upload-limit:
+        description: 'GitHub Upload Limit (MiB)'
+        required: true
+        type: string
+        default: '100'
 
 jobs:
   # ---- JOBS ---- #
-  get-latest-esstatistiklistemodtag-file:
-    name: Get Latest ESStatistikListeModtag File
-    uses: ./.github/workflows/get-latest-esstatistiklistemodtag-file.yml
+  get-latest-esstatistiklistemodtag-zip-file:
+    name: Get Latest ESStatistikListeModtag ZIP-File
+    uses: ./.github/workflows/get-latest-esstatistiklistemodtag-zip-file.yml
     secrets: inherit
+
+  download-latest-esstatistiklistemodtag-zip-file:
+    name: Download Latest ESStatistikListeModtag ZIP-File
+    needs: get-latest-esstatistiklistemodtag-zip-file
+    if: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.hasFoundNewZIPFile == '1' }}
+    uses: ./.github/workflows/download-latest-esstatistiklistemodtag-zip-file.yml
+    secrets: inherit
+    with:
+      previous-filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.previousFilenameNoSuffix }}
+      filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filenameNoSuffix }}
+      discord-upload-limit: "${{ inputs.discord-upload-limit }}"
+      github-upload-limit: "${{ inputs.github-upload-limit }}"
 
   # ---- TRIGGER NEW WORKFLOW ---- #
   # trigger-new-workflow:

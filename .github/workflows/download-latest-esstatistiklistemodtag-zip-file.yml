@@ -1,0 +1,235 @@
+name: Download Latest ESStatistikListeModtag ZIP-File
+
+on:
+  workflow_call:
+    inputs:
+      previous-filename-no-suffix:
+        description: 'Previous ESStatistikListeModtag Filename (No Suffix)'
+        required: true
+        type: string
+      filename-no-suffix:
+        description: 'ESStatistikListeModtag Filename (No Suffix)'
+        required: true
+        type: string
+      discord-upload-limit:
+        description: 'Discord Upload Limit (MiB)'
+        required: true
+        type: string
+      github-upload-limit:
+        description: 'GitHub Upload Limit (MiB)'
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      previous-filename-no-suffix:
+        description: 'Previous ESStatistikListeModtag Filename (No Suffix)'
+        required: true
+        type: string
+      filename-no-suffix:
+        description: 'ESStatistikListeModtag Filename (No Suffix)'
+        required: true
+        type: string
+      discord-upload-limit:
+        description: 'Discord Upload Limit (MiB)'
+        required: true
+        type: string
+      github-upload-limit:
+        description: 'GitHub Upload Limit (MiB)'
+        required: true
+        type: string
+
+jobs:
+  download-latest-esstatistiklistemodtag-zip-file:
+    name: Download Latest ESStatistikListeModtag ZIP-File
+    runs-on: ubuntu-latest
+    steps:
+      - name: Display runner information
+        run: |
+          echo "cpu-core:       $(nproc --all)"
+          echo "cpu-model:      $(grep 'model name' /proc/cpuinfo | head -1 | cut -d: -f2- | sed 's/^[[:space:]]*//')"
+          echo "hostname:       $(hostname)"
+          echo "kernel-release: $(uname -r)"
+          echo "kernel-version: $(uname -v)"
+          echo "name:           $(grep '^NAME=' /etc/os-release | head -1 | cut -d= -f2- | tr -d '\"')"
+          echo "platform:       $(uname -s)"
+          echo "release:        $(grep '^VERSION_ID=' /etc/os-release | head -1 | cut -d= -f2- | tr -d '\"')"
+          echo "total-memory:   $(grep MemTotal /proc/meminfo | awk '{print $2 * 1024}')"
+          
+      - name: Maximize build space
+        uses: AdityaGarg8/remove-unwanted-software@v5
+        with:
+          remove-haskell: "true"
+          remove-codeql: "true"
+          remove-swapfile: "true"
+          
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ github.repository_owner }}/ESStatistikListeParser-GitHub"
+          ref: "main"
+          path: "${{ github.workspace }}/"
+          sparse-checkout: |
+            /Branch-GitHub.py
+            /ESStatistikListeModtag-GitHub.py
+          sparse-checkout-cone-mode: false
+          token: "${{ secrets.PAT }}"
+
+      - name: Create latest ESStatistikListeModtag repository and set workflow permissions
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const repoName = `${{ inputs.filename-no-suffix }}`;
+
+            const payload = {
+              name: repoName,
+              private: true,
+              visibility: "private",
+              has_issues: false,
+              has_projects: false,
+              has_wiki: false,
+              has_discussions: false,
+              has_downloads: true,
+              is_template: false,
+              auto_init: true,
+              allow_squash_merge: true,
+              allow_merge_commit: false,
+              allow_rebase_merge: false,
+              allow_auto_merge: true,
+              delete_branch_on_merge: true,
+              use_squash_pr_title_as_default: true,
+              squash_merge_commit_title: "PR_TITLE",
+              squash_merge_commit_message: "BLANK"
+            };
+      
+            try {
+              const response = await github.rest.repos.createForAuthenticatedUser(payload);
+              core.info(`Created ${response.data.name}`);
+            } catch (err) {
+              if (err.status === 422 && err.message.includes('name already exists')) {
+                core.info(`Repository ${repoName} already exists, skipping creation.`);
+              } else {
+                throw err;
+              }
+            }
+
+            try {
+              await github.request(
+                'PUT /repos/{owner}/{repo}/actions/permissions/workflow',
+                {
+                  owner: context.repo.owner,
+                  repo: repoName,
+                  default_workflow_permissions: 'write',
+                  can_approve_pull_request_reviews: true
+                }
+              );
+              core.info(`Workflow permissions set for ${repoName}`);
+            } catch (err) {
+              throw err;
+            }
+          github-token: "${{ secrets.PAT }}"
+
+      - name: Checkout latest ESStatistikListeModtag repository
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ github.repository_owner }}/${{ inputs.filename-no-suffix }}"
+          ref: "main"
+          path: "${{ github.workspace }}/temp/"
+          sparse-checkout: |
+            !/*
+          sparse-checkout-cone-mode: false
+          token: "${{ secrets.PAT }}"
+
+      - name: Set up Git
+        working-directory: "${{ github.workspace }}/temp/"
+        run: |
+          gh auth login --with-token <<< "${{ secrets.PAT }}"
+
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global http.postBuffer 104857600
+          
+          if git ls-remote --exit-code --heads origin ${{ inputs.filename-no-suffix }}.zip; then
+              echo "Branch '${{ inputs.filename-no-suffix }}.zip' already exists, deleting and recreating..."
+              
+              if git show-ref --verify --quiet refs/heads/${{ inputs.filename-no-suffix }}.zip; then
+                  git branch -D ${{ inputs.filename-no-suffix }}.zip
+              fi
+              git push origin --delete ${{ inputs.filename-no-suffix }}.zip
+              git checkout -b ${{ inputs.filename-no-suffix }}.zip
+          else
+              echo "Branch '${{ inputs.filename-no-suffix }}.zip' does not exist, creating..."
+              
+              git checkout -b ${{ inputs.filename-no-suffix }}.zip
+          fi
+
+          git push -u origin ${{ inputs.filename-no-suffix }}.zip
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Python dependencies
+        run: |
+          pip install pymongo discord-webhook
+
+      - name: Download latest ESStatistikListeModtag ZIP-file
+        run: |
+          mv ${{ github.workspace }}/ESStatistikListeModtag-GitHub.py ${{ github.workspace }}/temp/ESStatistikListeModtag-GitHub.py
+          
+          python ${{ github.workspace }}/temp/ESStatistikListeModtag-GitHub.py
+        env:
+          FILENAME: "${{ inputs.filename-no-suffix }}.zip"
+          FILEPATH: "${{ github.workspace }}/temp/"
+
+      - name: Upload latest ESStatistikListeModtag ZIP-file to GitHub main-branch
+        working-directory: "${{ github.workspace }}/temp/"
+        run: |
+          mv ${{ github.workspace }}/Branch-GitHub.py ${{ github.workspace }}/temp/Branch-GitHub.py
+          
+          python ${{ github.workspace }}/temp/Branch-GitHub.py main
+        env:
+          FILENAME: "${{ inputs.filename-no-suffix }}.zip"
+          FILENAME_NO_SUFFIX: "${{ inputs.filename-no-suffix }}"
+          FILEPATH: "${{ github.workspace }}/temp/"
+          BRANCHNAME: "${{ inputs.filename-no-suffix }}.zip"
+          GITHUB_UPLOAD_LIMIT: "${{ inputs.github-upload-limit }}"
+
+      - name: Set up latest ESStatistikListeModtag repository branches
+        working-directory: "${{ github.workspace }}/temp/"
+        run: |
+          git switch --orphan empty
+          git commit --allow-empty -m "Created Empty branch"
+          git push origin empty
+
+          git switch --orphan mongodb
+          git commit --allow-empty -m "Created MongoDB branch"
+          git push origin mongodb
+
+          git switch --orphan postgresql
+          git commit --allow-empty -m "Created PostgreSQL branch"
+          git push origin postgresql
+
+          git switch --orphan kidvin
+          git commit --allow-empty -m "Created KidVin branch"
+          git push origin kidvin
+          
+          git switch --orphan kid
+          git commit --allow-empty -m "Created Kid branch"
+          git push origin kid
+
+          git switch --orphan vin
+          git commit --allow-empty -m "Created Vin branch"
+          git push origin vin
+
+          git switch --orphan newkidvin
+          git commit --allow-empty -m "Created NewKidVin branch"
+          git push origin newkidvin
+          
+          git switch --orphan newkid
+          git commit --allow-empty -m "Created NewKid branch"
+          git push origin newkid
+
+          git switch --orphan newvin
+          git commit --allow-empty -m "Created NewVin branch"
+          git push origin newvin
