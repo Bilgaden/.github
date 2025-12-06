@@ -1,19 +1,31 @@
-name: Get Latest ESStatistikListeModtag File
+name: Get Latest ESStatistikListeModtag ZIP-File
 
 on:
   workflow_call:
     outputs:
-      hasFoundNewFile:
-        description: "1 if a new file was found, otherwise 0"
-        value: ${{ jobs.get-latest-esstatistiklistemodtag-file.outputs.hasFoundNewFile }}
+      hasFoundNewZIPFile:
+        description: "1 if a new ZIP-file was found, otherwise 0"
+        value: ${{ jobs.get-latest-esstatistiklistemodtag-zip-file.outputs.hasFoundNewZIPFile }}
   workflow_dispatch:
 
 jobs:
-  get-latest-esstatistiklistemodtag-file:
+  get-latest-esstatistiklistemodtag-zip-file:
     runs-on: ubuntu-latest
     outputs:
-      hasFoundNewFile: ${{ steps.get-latest-file.outputs.hasFoundNewFile }}
+      hasFoundNewZIPFile: ${{ steps.get-latest-zip-file.outputs.hasFoundNewZIPFile }}
     steps:
+      - name: Display runner information
+        run: |
+          echo "cpu-core:       $(nproc --all)"
+          echo "cpu-model:      $(grep 'model name' /proc/cpuinfo | head -1 | cut -d: -f2- | sed 's/^[[:space:]]*//')"
+          echo "hostname:       $(hostname)"
+          echo "kernel-release: $(uname -r)"
+          echo "kernel-version: $(uname -v)"
+          echo "name:           $(grep '^NAME=' /etc/os-release | head -1 | cut -d= -f2- | tr -d '\"')"
+          echo "platform:       $(uname -s)"
+          echo "release:        $(grep '^VERSION_ID=' /etc/os-release | head -1 | cut -d= -f2- | tr -d '\"')"
+          echo "total-memory:   $(grep MemTotal /proc/meminfo | awk '{print $2 * 1024}')"
+      
       - name: Checkout ESStatistikListeParser-GitHub repository
         uses: actions/checkout@v5
         with:
@@ -31,6 +43,6 @@ jobs:
           pip install -r ${{ github.workspace }}/requirements.txt
 
       - name: Run GetLatestFile-GitHub script
-        id: get-latest-file
+        id: get-latest-zip-file
         run: |
           python ${{ github.workspace }}/GetLatestFile-GitHub.py
