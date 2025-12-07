@@ -79,6 +79,7 @@ jobs:
         with:
           script: |
             const repoOwner = context.repo.owner;
+            console.log(repoOwner);
             const repoName = `${{ inputs.filename-no-suffix }}`;
 
             const payload = {
