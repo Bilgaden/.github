@@ -82,7 +82,7 @@ jobs:
             const repoName = `${{ inputs.filename-no-suffix }}`;
 
             const payload = {
-              repoOwner,
+              owner: repoOwner,
               name: repoName,
               private: true,
               visibility: "private",
@@ -113,6 +113,8 @@ jobs:
                 throw err;
               }
             }
+
+            await github.rest.repos.get({ repoOwner, repo: repoName });
 
             try {
               await github.request(
