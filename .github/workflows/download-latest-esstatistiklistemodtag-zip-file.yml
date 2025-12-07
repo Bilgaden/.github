@@ -77,13 +77,12 @@ jobs:
       - name: Create latest ESStatistikListeModtag repository and set workflow permissions
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.PAT }}
           script: |
             const repoName = `${{ inputs.filename-no-suffix }}`;
-            const org = context.repo.owner;
+            const repoOwner = context.repo.owner;
       
             const payload = {
-              org,
+              org: repoOwner,
               name: repoName,
               private: true,
               visibility: "private",
@@ -104,34 +103,34 @@ jobs:
               squash_merge_commit_message: "BLANK"
             };
       
-            let owner = org;
-      
             try {
               const response = await github.rest.repos.createInOrg(payload);
-              owner = response.data.owner.login;
-              core.info(`Created ${owner}/${response.data.name}`);
+              core.info(`Created ${response.data.owner.login}/${response.data.name}`);
             } catch (err) {
-              if (err.status === 422) {
-                core.info(`Repository ${org}/${repoName} already exists, continuing.`);
+              if (err.status === 422 && err.message.includes('name already exists')) {
+                core.info(`Repository ${repoOwner}/${repoName} already exists, skipping creation.`);
               } else {
                 throw err;
               }
             }
       
-            await github.rest.repos.get({ owner, repo: repoName });
-      
-            await github.request(
-              'PUT /repos/{owner}/{repo}/actions/permissions/workflow',
-              {
-                owner,
-                repo: repoName,
-                default_workflow_permissions: 'write',
-                can_approve_pull_request_reviews: true
-              }
-            );
-      
-            core.info(`Workflow permissions set for ${owner}/${repoName}`);
+            await github.rest.repos.get({ owner: repoOwner, repo: repoName });
 
+            try {
+              await github.request(
+                'PUT /repos/{owner}/{repo}/actions/permissions/workflow',
+                {
+                  owner: repoOwner,
+                  repo: repoName,
+                  default_workflow_permissions: 'write',
+                  can_approve_pull_request_reviews: true
+                }
+              );
+              core.info(`Workflow permissions set for ${repoOwner}/${repoName}`);
+            } catch (err) {
+              throw err;
+            }
+          github-token: ${{ secrets.PAT }}
 
       - name: Checkout latest ESStatistikListeModtag repository
         uses: actions/checkout@v4
