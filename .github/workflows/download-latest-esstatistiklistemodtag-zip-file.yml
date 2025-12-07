@@ -78,6 +78,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const repoOwner = context.repo.owner;
             const repoName = `${{ inputs.filename-no-suffix }}`;
 
             const payload = {
@@ -102,7 +103,10 @@ jobs:
             };
       
             try {
-              const response = await github.rest.repos.createForAuthenticatedUser(payload);
+              const response = await github.rest.repos.createInOrg({
+                repoOwner,
+                ...payload
+              });
               core.info(`Created ${response.data.name}`);
             } catch (err) {
               if (err.status === 422 && err.message.includes('name already exists')) {
@@ -116,7 +120,7 @@ jobs:
               await github.request(
                 'PUT /repos/{owner}/{repo}/actions/permissions/workflow',
                 {
-                  owner: context.repo.owner,
+                  owner: repoOwner,
                   repo: repoName,
                   default_workflow_permissions: 'write',
                   can_approve_pull_request_reviews: true
