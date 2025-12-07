@@ -79,7 +79,6 @@ jobs:
         with:
           script: |
             const repoOwner = context.repo.owner;
-            console.log(repoOwner);
             const repoName = `${{ inputs.filename-no-suffix }}`;
 
             const payload = {
@@ -105,8 +104,9 @@ jobs:
       
             try {
               const response = await github.rest.repos.createInOrg({
-                repoOwner,
-                ...payload
+                org,
+                ...payload,
+                name: repoName
               });
               core.info(`Created ${response.data.name}`);
             } catch (err) {
