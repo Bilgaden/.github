@@ -16,6 +16,7 @@ on:
 
 jobs:
   get-latest-esstatistiklistemodtag-zip-file:
+    name: Get Latest ESStatistikListeModtag ZIP-File
     runs-on: ubuntu-latest
     outputs:
       hasFoundNewZIPFile: ${{ steps.get-latest-zip-file.outputs.hasFoundNewZIPFile }}
