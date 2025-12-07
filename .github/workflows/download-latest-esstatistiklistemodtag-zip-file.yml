@@ -104,7 +104,7 @@ jobs:
       
             try {
               const response = await github.rest.repos.createInOrg({
-                org,
+                repoOwner,
                 ...payload,
                 name: repoName
               });
