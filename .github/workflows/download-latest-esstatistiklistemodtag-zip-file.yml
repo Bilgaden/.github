@@ -82,7 +82,7 @@ jobs:
           github-token: ${{ secrets.PAT }}
           script: |
             const repoName = `${{ inputs.filename-no-suffix }}`;
-            const org = process.env.TARGET_ORG;
+            const org = context.repo.owner;
       
             const payload = {
               org,
