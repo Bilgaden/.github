@@ -104,29 +104,33 @@ jobs:
               squash_merge_commit_message: "BLANK"
             };
       
+            let owner = repoOwner;
+
             try {
               const response = await github.rest.repos.createInOrg(payload);
-              core.info(`Created ${response.data.name}`);
+              owner = response.data.owner.login;
+              core.info(`Created ${owner}/${response.data.name}`);
             } catch (err) {
-              if (err.status === 422 && err.message.includes('name already exists')) {
-                core.info(`Repository ${repoName} already exists, skipping creation.`);
+              if (err.status === 422) {
+                core.info(`Repository ${org}/${repoName} already exists, continuing...`);
               } else {
                 throw err;
               }
             }
       
-            await github.rest.repos.get({ repoOwner, repo: repoName });
+            await github.rest.repos.get({ owner, repo: repoName });
       
-            // Set default workflow permissions for THIS repo
             await github.request(
               'PUT /repos/{owner}/{repo}/actions/permissions/workflow',
               {
-                owner: repoOwner,
+                owner: owner,
                 repo: repoName,
                 default_workflow_permissions: 'write',
                 can_approve_pull_request_reviews: true
               }
             );
+      
+            core.info(`Workflow permissions set for ${owner}/${repoName}`);
 
       - name: Checkout latest ESStatistikListeModtag repository
         uses: actions/checkout@v4
