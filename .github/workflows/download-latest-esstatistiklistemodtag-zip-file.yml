@@ -98,8 +98,8 @@ jobs:
               allow_merge_commit: false,
               allow_rebase_merge: false,
               allow_auto_merge: true,
-              // NOTE: This requires you to be an org owner to set true:
-              // delete_branch_on_merge: true,
+              delete_branch_on_merge: true,
+              use_squash_pr_title_as_default: true,
               squash_merge_commit_title: "PR_TITLE",
               squash_merge_commit_message: "BLANK"
             };
@@ -118,10 +118,8 @@ jobs:
               }
             }
       
-            // Ensure the repo exists under the intended owner
             await github.rest.repos.get({ owner, repo: repoName });
       
-            // Set default workflow permissions for THIS repo
             await github.request(
               'PUT /repos/{owner}/{repo}/actions/permissions/workflow',
               {
