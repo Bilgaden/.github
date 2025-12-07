@@ -82,6 +82,7 @@ jobs:
             const repoName = `${{ inputs.filename-no-suffix }}`;
 
             const payload = {
+              repoOwner,
               name: repoName,
               private: true,
               visibility: "private",
@@ -103,11 +104,7 @@ jobs:
             };
       
             try {
-              const response = await github.rest.repos.createInOrg({
-                repoOwner,
-                ...payload,
-                name: repoName
-              });
+              const response = await github.rest.repos.createInOrg(payload);
               core.info(`Created ${response.data.name}`);
             } catch (err) {
               if (err.status === 422 && err.message.includes('name already exists')) {
