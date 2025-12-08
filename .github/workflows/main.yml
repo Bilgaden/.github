@@ -35,11 +35,64 @@ jobs:
 
   check-rows:
     name: Check Rows
-    needs: download-latest-esstatistiklistemodtag-zip-file
+    needs: [get-latest-esstatistiklistemodtag-zip-file, download-latest-esstatistiklistemodtag-zip-file]
     uses: ./.github/workflows/check-rows.yml
     secrets: inherit
     with:
       filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filename-no-suffix }}
+
+  run-mongodb:
+    name: Run MongoDB
+    needs: [get-latest-esstatistiklistemodtag-zip-file, download-latest-esstatistiklistemodtag-zip-file, check-rows]
+    uses: ./.github/workflows/run-mongodb.yml
+    secrets: inherit
+    with:
+      filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filename-no-suffix }}
+      discord-upload-limit: "${{ inputs.discord-upload-limit }}"
+      github-upload-limit: "${{ inputs.github-upload-limit }}"
+
+  run-postgresql:
+    name: Run PostgreSQL
+    needs: [get-latest-esstatistiklistemodtag-zip-file, download-latest-esstatistiklistemodtag-zip-file, check-rows]
+    uses: ./.github/workflows/run-postgresql.yml
+    secrets: inherit
+    with:
+      filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filename-no-suffix }}
+      discord-upload-limit: "${{ inputs.discord-upload-limit }}"
+      github-upload-limit: "${{ inputs.github-upload-limit }}"
+
+  run-kidvin:
+    name: Run KidVin
+    needs: [get-latest-esstatistiklistemodtag-zip-file, download-latest-esstatistiklistemodtag-zip-file, check-rows]
+    uses: ./.github/workflows/run-kidvin.yml
+    secrets: inherit
+    with:
+      previous-filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.previous-filename-no-suffix }}
+      filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filename-no-suffix }}
+      discord-upload-limit: "${{ inputs.discord-upload-limit }}"
+      github-upload-limit: "${{ inputs.github-upload-limit }}"
+
+  run-kid:
+    name: Run Kid
+    needs: [get-latest-esstatistiklistemodtag-zip-file, download-latest-esstatistiklistemodtag-zip-file, check-rows]
+    uses: ./.github/workflows/run-kid.yml
+    secrets: inherit
+    with:
+      previous-filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.previous-filename-no-suffix }}
+      filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filename-no-suffix }}
+      discord-upload-limit: "${{ inputs.discord-upload-limit }}"
+      github-upload-limit: "${{ inputs.github-upload-limit }}"
+
+  run-vin:
+    name: Run Vin
+    needs: [get-latest-esstatistiklistemodtag-zip-file, download-latest-esstatistiklistemodtag-zip-file, check-rows]
+    uses: ./.github/workflows/run-vin.yml
+    secrets: inherit
+    with:
+      previous-filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.previous-filename-no-suffix }}
+      filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filename-no-suffix }}
+      discord-upload-limit: "${{ inputs.discord-upload-limit }}"
+      github-upload-limit: "${{ inputs.github-upload-limit }}"
 
   # ---- TRIGGER NEW WORKFLOW ---- #
   # trigger-new-workflow:

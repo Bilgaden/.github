@@ -193,6 +193,16 @@ jobs:
           FILENAME: "${{ inputs.filename-no-suffix }}.zip"
           FILEPATH: "${{ github.workspace }}/temp/"
 
+      - name: Archive latest ESStatistikListeModtag ZIP-file
+        run: |
+          mkdir -p ${{ github.workspace }}/zip
+          zip -j -r -s ${{ inputs.discord-upload-limit }}m ${{ github.workspace }}/zip/${{ inputs.filename-no-suffix }}.zip ${{ github.workspace }}/temp/${{ inputs.filename-no-suffix }}.zip
+
+      - name: Split latest ESStatistikListeModtag ZIP-file
+        run: |
+          mkdir -p ${{ github.workspace }}/split
+          split -d -b ${{ inputs.discord-upload-limit }}m ${{ github.workspace }}/temp/${{ inputs.filename-no-suffix }}.zip ${{ github.workspace }}/split/${{ inputs.filename-no-suffix }}.zip.part
+
       - name: Upload latest ESStatistikListeModtag ZIP-file to GitHub main-branch
         working-directory: "${{ github.workspace }}/temp/"
         run: |
@@ -206,16 +216,6 @@ jobs:
           REPOOWNER: "${{ github.repository_owner }}"
           BRANCHNAME: "${{ inputs.filename-no-suffix }}.zip"
           GITHUB_UPLOAD_LIMIT: "${{ inputs.github-upload-limit }}"
-
-      - name: Archive latest ESStatistikListeModtag ZIP-file
-        run: |
-          mkdir -p ${{ github.workspace }}/zip
-          zip -j -r -s ${{ inputs.discord-upload-limit }}m ${{ github.workspace }}/zip/${{ inputs.filename-no-suffix }}.zip ${{ github.workspace }}/temp/${{ inputs.filename-no-suffix }}.zip
-
-      - name: Split latest ESStatistikListeModtag ZIP-file
-        run: |
-          mkdir -p ${{ github.workspace }}/split
-          split -d -b ${{ inputs.discord-upload-limit }}m ${{ github.workspace }}/temp/${{ inputs.filename-no-suffix }}.zip ${{ github.workspace }}/split/${{ inputs.filename-no-suffix }}.zip.part
 
       - name: Upload latest ESStatistikListeModtag ZIP-file to Discord
         run: |

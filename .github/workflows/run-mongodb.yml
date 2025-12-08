@@ -1,0 +1,204 @@
+name: Run MongoDB
+
+on:
+  workflow_call:
+    inputs:
+      filename-no-suffix:
+        description: 'ESStatistikListeModtag Filename (No Suffix)'
+        required: true
+        type: string
+      discord-upload-limit:
+        description: 'Discord Upload Limit (MiB)'
+        required: true
+        type: string
+      github-upload-limit:
+        description: 'GitHub Upload Limit (MiB)'
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      filename-no-suffix:
+        description: 'ESStatistikListeModtag Filename (No Suffix)'
+        required: true
+        type: string
+      discord-upload-limit:
+        description: 'Discord Upload Limit (MiB)'
+        required: true
+        type: string
+      github-upload-limit:
+        description: 'GitHub Upload Limit (MiB)'
+        required: true
+        type: string
+
+jobs:
+  run-mongodb:
+    name: Run MongoDB
+    runs-on: ubuntu-latest
+    steps:
+      - name: Display runner information
+        run: |
+          echo "cpu-core:       $(nproc --all)"
+          echo "cpu-model:      $(grep 'model name' /proc/cpuinfo | head -1 | cut -d: -f2- | sed 's/^[[:space:]]*//')"
+          echo "hostname:       $(hostname)"
+          echo "kernel-release: $(uname -r)"
+          echo "kernel-version: $(uname -v)"
+          echo "name:           $(grep '^NAME=' /etc/os-release | head -1 | cut -d= -f2- | tr -d '\"')"
+          echo "platform:       $(uname -s)"
+          echo "release:        $(grep '^VERSION_ID=' /etc/os-release | head -1 | cut -d= -f2- | tr -d '\"')"
+          echo "total-memory:   $(grep MemTotal /proc/meminfo | awk '{print $2 * 1024}')"
+          
+      - name: Maximize build space
+        uses: AdityaGarg8/remove-unwanted-software@v5
+        with:
+          remove-dotnet: "true"
+          remove-android: "true"
+          remove-haskell: "true"
+          remove-codeql: "true"
+          remove-docker-images: "true"
+          remove-large-packages: "true"
+          remove-cached-tools: "true"
+          remove-swapfile: "true"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ github.repository_owner }}/ESStatistikListeParser-GitHub"
+          ref: "main"
+          path: "${{ github.workspace }}/"
+          sparse-checkout: |
+            /Branch-GitHub.py
+            /go.mod
+            /go.sum
+            /MongoDB-GitHub.go
+            /UploadToDiscord-GitHub.py
+          sparse-checkout-cone-mode: false
+          token: "${{ secrets.PAT }}"
+
+      - name: Checkout ESStatistikListeModtag repository
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ github.repository_owner }}/${{ inputs.filename-no-suffix }}"
+          ref: "main"
+          path: "${{ github.workspace }}/temp/"
+          sparse-checkout: |
+            /ESStatistikListeModtag
+          sparse-checkout-cone-mode: false
+          token: "${{ secrets.PAT }}"
+
+      - name: Install MongoDB
+        uses: ankane/setup-mongodb@v1
+        with:
+          mongodb-version: 8.0
+
+      - name: Create MongoDB database
+        run: |
+          mongosh --host localhost:27017 <<EOF
+            db = db.getSiblingDB('bilgaden');
+            db.createCollection('dmr');
+          EOF
+
+      - name: Stitch ESStatistikListeModtag back together
+        run: |
+          cat ${{ github.workspace }}/temp/ESStatistikListeModtag/*.part* > "${{ github.workspace }}/${{ inputs.filename-no-suffix }}.zip"
+          file "${{ github.workspace }}/${{ inputs.filename-no-suffix }}.zip"
+          
+          rm -rf ${{ github.workspace }}/temp/
+
+      - name: Checkout ESStatistikListeModtag repository (MongoDB-branch)
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ github.repository_owner }}/${{ inputs.filename-no-suffix }}"
+          ref: "mongodb"
+          path: "${{ github.workspace }}/temp/"
+          sparse-checkout: |
+            !/*
+          sparse-checkout-cone-mode: false
+          token: "${{ secrets.PAT }}"
+
+      - name: Set up Git
+        working-directory: "${{ github.workspace }}/temp/"
+        run: |
+          gh auth login --with-token <<< "${{ secrets.PAT }}"
+
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global http.postBuffer 104857600
+          
+          if git ls-remote --exit-code --heads origin ${{ inputs.filename-no-suffix }}.zip-mongodb; then
+              echo "Branch '${{ inputs.filename-no-suffix }}.zip-mongodb' already exists, deleting and recreating..."
+              
+              if git show-ref --verify --quiet refs/heads/${{ inputs.filename-no-suffix }}.zip-mongodb; then
+                  git branch -D ${{ inputs.filename-no-suffix }}.zip-mongodb
+              fi
+              git push origin --delete ${{ inputs.filename-no-suffix }}.zip-mongodb
+              git checkout -b ${{ inputs.filename-no-suffix }}.zip-mongodb
+          else
+              echo "Branch '${{ inputs.filename-no-suffix }}.zip-mongodb' does not exist, creating..."
+              
+              git checkout -b ${{ inputs.filename-no-suffix }}.zip-mongodb
+          fi
+
+          git push -u origin ${{ inputs.filename-no-suffix }}.zip-mongodb
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.21
+
+      - name: Install Go dependencies
+        run: |
+          go mod tidy
+
+      - name: Run MongoDB Go script
+        run: |
+          go run ${{ github.workspace }}/MongoDB-GitHub.go
+          
+          rm -f "${{ github.workspace }}/${{ inputs.filename-no-suffix }}.zip"
+
+      - name: Dump the entire database
+        run: |
+          mongodump \
+            --host localhost --port 27017 \
+            --db bilgaden \
+            --collection=dmr \
+            --gzip --out dump
+          find ${{ github.workspace }}/dump/bilgaden -type f ! -name 'dmr.bson.gz' -delete
+    
+      - name: Archive BSON-file
+        run: |
+          mkdir -p ${{ github.workspace }}/mongodb-zip
+          zip -j -r -s ${{ inputs.discord-upload-limit }}m ${{ github.workspace }}/mongodb-zip/${{ inputs.filename-no-suffix }}.bson.gz.zip ${{ github.workspace }}/dump/bilgaden
+
+      - name: Split BSON-file
+        run: |
+          mkdir -p ${{ github.workspace }}/mongodb-split
+          split -d -b ${{ inputs.discord-upload-limit }}m ${{ github.workspace }}/dump/bilgaden/dmr.bson.gz ${{ github.workspace }}/mongodb-split/${{ inputs.filename-no-suffix }}.bson.gz.part
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Python dependencies
+        run: |
+          pip install pymongo discord-webhook
+
+      - name: Upload BSON-file to GitHub MongoDB-branch
+        working-directory: "${{ github.workspace }}/temp/"
+        run: |
+          mv ${{ github.workspace }}/dump/bilgaden/dmr.bson.gz ${{ github.workspace }}/temp/dmr.bson.gz
+          mv ${{ github.workspace }}/Branch-GitHub.py ${{ github.workspace }}/temp/Branch-GitHub.py
+          
+          python ${{ github.workspace }}/temp/Branch-GitHub.py mongodb
+        env:
+          FILENAME: "dmr.bson.gz"
+          FILENAME_NO_SUFFIX: "${{ inputs.filename-no-suffix }}"
+          FILEPATH: "${{ github.workspace }}/temp/"
+          BRANCHNAME: "${{ inputs.filename-no-suffix }}.zip-mongodb"
+          GITHUB_UPLOAD_LIMIT: "${{ inputs.github-upload-limit }}"
+
+      - name: Upload BSON-file to Discord
+        run: |
+          python ${{ github.workspace }}/UploadToDiscord-GitHub.py mongodb
+        env:
+          FILENAME: "${{ inputs.filename-no-suffix }}.bson.gz"
