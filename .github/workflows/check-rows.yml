@@ -1,0 +1,83 @@
+name: Check Rows
+
+on:
+  workflow_call:
+    inputs:
+      filename-no-suffix:
+        description: 'ESStatistikListeModtag Filename (No Suffix)'
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      filename-no-suffix:
+        description: 'ESStatistikListeModtag Filename (No Suffix)'
+        required: true
+        type: string
+
+jobs:
+  check-rows:
+    name: Check Rows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Display runner information
+        run: |
+          echo "cpu-core:       $(nproc --all)"
+          echo "cpu-model:      $(grep 'model name' /proc/cpuinfo | head -1 | cut -d: -f2- | sed 's/^[[:space:]]*//')"
+          echo "hostname:       $(hostname)"
+          echo "kernel-release: $(uname -r)"
+          echo "kernel-version: $(uname -v)"
+          echo "name:           $(grep '^NAME=' /etc/os-release | head -1 | cut -d= -f2- | tr -d '\"')"
+          echo "platform:       $(uname -s)"
+          echo "release:        $(grep '^VERSION_ID=' /etc/os-release | head -1 | cut -d= -f2- | tr -d '\"')"
+          echo "total-memory:   $(grep MemTotal /proc/meminfo | awk '{print $2 * 1024}')"
+          
+      - name: Maximize build space
+        uses: AdityaGarg8/remove-unwanted-software@v5
+        with:
+          remove-haskell: "true"
+          remove-codeql: "true"
+          remove-swapfile: "true"
+          
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          repository: "${{ github.repository_owner }}/ESStatistikListeParser-GitHub"
+          ref: "main"
+          path: "${{ github.workspace }}/"
+          sparse-checkout: |
+            /go.mod
+            /go.sum
+            /CheckRows-GitHub.go
+          sparse-checkout-cone-mode: false
+          token: "${{ secrets.PAT }}"
+
+      - name: Checkout ESStatistikListeModtag repository
+        uses: actions/checkout@v6
+        with:
+          repository: "${{ github.repository_owner }}/${{ inputs.filename-no-suffix }}"
+          ref: "main"
+          path: "${{ github.workspace }}/temp/"
+          sparse-checkout: |
+            /ESStatistikListeModtag
+          sparse-checkout-cone-mode: false
+          token: "${{ secrets.PAT }}"
+
+      - name: Stitch ESStatistikListeModtag back together
+        run: |
+          cat ${{ github.workspace }}/temp/ESStatistikListeModtag/*.part* > "${{ github.workspace }}/${{ inputs.filename-no-suffix }}.zip"
+          file "${{ github.workspace }}/${{ inputs.filename-no-suffix }}.zip"
+          
+          rm -rf ${{ github.workspace }}/temp/
+          
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 'stable'
+
+      - name: Install Go dependencies
+        run: |
+          go mod tidy
+
+      - name: Run CheckRows Go script
+        run: |
+          go run ${{ github.workspace }}/CheckRows-GitHub.go

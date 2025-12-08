@@ -63,7 +63,7 @@ jobs:
           remove-swapfile: "true"
           
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: "${{ github.repository_owner }}/ESStatistikListeParser-GitHub"
           ref: "main"
@@ -71,11 +71,13 @@ jobs:
           sparse-checkout: |
             /Branch-GitHub.py
             /ESStatistikListeModtag-GitHub.py
+            /requirements.txt
+            /UploadToDiscord-GitHub.py
           sparse-checkout-cone-mode: false
           token: "${{ secrets.PAT }}"
 
       - name: Create latest ESStatistikListeModtag repository and set workflow permissions
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const repoName = `${{ inputs.filename-no-suffix }}`;
@@ -133,7 +135,7 @@ jobs:
           github-token: ${{ secrets.PAT }}
 
       - name: Checkout latest ESStatistikListeModtag repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: "${{ github.repository_owner }}/${{ inputs.filename-no-suffix }}"
           ref: "main"
@@ -169,13 +171,13 @@ jobs:
           git push -u origin ${{ inputs.filename-no-suffix }}.zip
 
       - name: Install Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
 
       - name: Install Python dependencies
         run: |
-          pip install pymongo discord-webhook
+          pip install -r ${{ github.workspace }}/requirements.txt
 
       - name: Download latest ESStatistikListeModtag ZIP-file
         run: |
@@ -199,6 +201,22 @@ jobs:
           REPOOWNER: "${{ github.repository_owner }}"
           BRANCHNAME: "${{ inputs.filename-no-suffix }}.zip"
           GITHUB_UPLOAD_LIMIT: "${{ inputs.github-upload-limit }}"
+
+      - name: Archive latest ESStatistikListeModtag ZIP-file
+        run: |
+          mkdir -p ${{ github.workspace }}/zip
+          zip -j -r -s ${{ inputs.discord-upload-limit }}m ${{ github.workspace }}/zip/${{ inputs.filename-no-suffix }}.zip ${{ github.workspace }}/temp/${{ inputs.filename-no-suffix }}.zip
+
+      - name: Split latest ESStatistikListeModtag ZIP-file
+        run: |
+          mkdir -p ${{ github.workspace }}/split
+          split -d -b ${{ inputs.discord-upload-limit }}m ${{ github.workspace }}/temp/${{ inputs.filename-no-suffix }}.zip ${{ github.workspace }}/split/${{ inputs.filename-no-suffix }}.zip.part
+
+      - name: Upload latest ESStatistikListeModtag ZIP-file to Discord
+        run: |
+          python ${{ github.workspace }}/UploadToDiscord-GitHub.py normal
+        env:
+          FILENAME: "${{ inputs.filename-no-suffix }}.zip"
 
       - name: Set up latest ESStatistikListeModtag repository branches
         working-directory: "${{ github.workspace }}/temp/"

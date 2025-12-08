@@ -3,15 +3,15 @@ name: Get Latest ESStatistikListeModtag ZIP-File
 on:
   workflow_call:
     outputs:
-      hasFoundNewZIPFile:
+      has-found-new-zip-file:
         description: "1 if a new ZIP-file was found, otherwise 0"
-        value: ${{ jobs.get-latest-esstatistiklistemodtag-zip-file.outputs.hasFoundNewZIPFile }}
-      previousFilenameNoSuffix:
+        value: ${{ jobs.get-latest-esstatistiklistemodtag-zip-file.outputs.has-found-new-zip-file }}
+      previous-filename-no-suffix:
         description: "Previous ESStatistikListeModtag Filename (No Suffix)"
-        value: ${{ jobs.get-latest-esstatistiklistemodtag-zip-file.outputs.previousFilenameNoSuffix }}
-      filenameNoSuffix:
+        value: ${{ jobs.get-latest-esstatistiklistemodtag-zip-file.outputs.previous-filename-no-suffix }}
+      filename-no-suffix:
         description: "ESStatistikListeModtag Filename (No Suffix)"
-        value: ${{ jobs.get-latest-esstatistiklistemodtag-zip-file.outputs.filenameNoSuffix }}
+        value: ${{ jobs.get-latest-esstatistiklistemodtag-zip-file.outputs.filename-no-suffix }}
   workflow_dispatch:
 
 jobs:
@@ -19,9 +19,9 @@ jobs:
     name: Get Latest ESStatistikListeModtag ZIP-File
     runs-on: ubuntu-latest
     outputs:
-      hasFoundNewZIPFile: ${{ steps.get-latest-zip-file.outputs.hasFoundNewZIPFile }}
-      previousFilenameNoSuffix: ${{ steps.get-latest-zip-file.outputs.previousFilenameNoSuffix }}
-      filenameNoSuffix: ${{ steps.get-latest-zip-file.outputs.filenameNoSuffix }}
+      has-found-new-zip-file: ${{ steps.get-latest-zip-file.outputs.has-found-new-zip-file }}
+      previous-filename-no-suffix: ${{ steps.get-latest-zip-file.outputs.previous-filename-no-suffix }}
+      filename-no-suffix: ${{ steps.get-latest-zip-file.outputs.filename-no-suffix }}
     steps:
       - name: Display runner information
         run: |
@@ -36,7 +36,7 @@ jobs:
           echo "total-memory:   $(grep MemTotal /proc/meminfo | awk '{print $2 * 1024}')"
       
       - name: Checkout ESStatistikListeParser-GitHub repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: "${{ github.repository_owner }}/ESStatistikListeParser-GitHub"
           path: "${{ github.workspace }}/"

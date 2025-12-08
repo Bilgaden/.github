@@ -24,14 +24,22 @@ jobs:
   download-latest-esstatistiklistemodtag-zip-file:
     name: Download Latest ESStatistikListeModtag ZIP-File
     needs: get-latest-esstatistiklistemodtag-zip-file
-    if: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.hasFoundNewZIPFile == '1' }}
+    if: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.has-found-new-zip-file == '1' }}
     uses: ./.github/workflows/download-latest-esstatistiklistemodtag-zip-file.yml
     secrets: inherit
     with:
-      previous-filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.previousFilenameNoSuffix }}
-      filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filenameNoSuffix }}
+      previous-filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.previous-filename-no-suffix }}
+      filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filename-no-suffix }}
       discord-upload-limit: "${{ inputs.discord-upload-limit }}"
       github-upload-limit: "${{ inputs.github-upload-limit }}"
+
+  check-rows:
+    name: Check Rows
+    needs: download-latest-esstatistiklistemodtag-zip-file
+    uses: ./.github/workflows/check-rows.yml
+    secrets: inherit
+    with:
+      filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filename-no-suffix }}
 
   # ---- TRIGGER NEW WORKFLOW ---- #
   # trigger-new-workflow:
