@@ -205,6 +205,7 @@ jobs:
           FILENAME: "vin.json"
           FILENAME_NO_SUFFIX: "${{ inputs.filename-no-suffix }}"
           FILEPATH: "${{ github.workspace }}/temp/"
+          REPOOWNER: "${{ github.repository_owner }}"
           BRANCHNAME: "${{ inputs.filename-no-suffix }}.zip-vin"
           GITHUB_UPLOAD_LIMIT: "${{ inputs.github-upload-limit }}"
 
