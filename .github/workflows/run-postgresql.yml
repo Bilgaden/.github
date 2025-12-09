@@ -189,6 +189,7 @@ jobs:
           FILENAME: "bilgaden.dump.gz"
           FILENAME_NO_SUFFIX: "${{ inputs.filename-no-suffix }}"
           FILEPATH: "${{ github.workspace }}/temp/"
+          REPOOWNER: "${{ github.repository_owner }}"
           BRANCHNAME: "${{ inputs.filename-no-suffix }}.zip-postgresql"
           GITHUB_UPLOAD_LIMIT: "${{ inputs.github-upload-limit }}"
 
