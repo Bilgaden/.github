@@ -59,7 +59,7 @@ jobs:
           remove-swapfile: "true"
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: "${{ github.repository_owner }}/ESStatistikListeParser-GitHub"
           ref: "main"
@@ -75,7 +75,7 @@ jobs:
           token: "${{ secrets.PAT }}"
 
       - name: Checkout ESStatistikListeModtag repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: "${{ github.repository_owner }}/${{ inputs.filename-no-suffix }}"
           ref: "main"
@@ -103,7 +103,7 @@ jobs:
           rm -rf ${{ github.workspace }}/temp/
 
       - name: Checkout ESStatistikListeModtag repository (PostgreSQL-branch)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: "${{ github.repository_owner }}/${{ inputs.filename-no-suffix }}"
           ref: "postgresql"
@@ -139,9 +139,9 @@ jobs:
           git push -u origin ${{ inputs.filename-no-suffix }}.zip-postgresql
 
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: 1.21
+          go-version: 'stable'
 
       - name: Install Go dependencies
         run: |
@@ -170,7 +170,7 @@ jobs:
           split -d -b ${{ inputs.discord-upload-limit }}m ${{ github.workspace }}/bilgaden.dump.gz ${{ github.workspace }}/postgresql-split/${{ inputs.filename-no-suffix }}.dump.gz.part
 
       - name: Install Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
 

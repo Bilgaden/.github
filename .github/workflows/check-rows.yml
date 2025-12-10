@@ -69,7 +69,7 @@ jobs:
           
           rm -rf ${{ github.workspace }}/temp/
           
-      - name: Set up Go
+      - name: Install Go
         uses: actions/setup-go@v6
         with:
           go-version: 'stable'
