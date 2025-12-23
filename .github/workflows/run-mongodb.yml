@@ -69,7 +69,8 @@ jobs:
             /Branch-GitHub.py
             /go.mod
             /go.sum
-            /MongoDB-GitHub.go
+            /mongodb/MongoDB-GitHub.go
+            /requirements.txt
             /UploadToDiscord-GitHub.py
           sparse-checkout-cone-mode: false
           token: "${{ secrets.PAT }}"
@@ -147,10 +148,12 @@ jobs:
 
       - name: Install Go dependencies
         run: |
-          go mod tidy
+          go mod download
 
       - name: Run MongoDB Go script
         run: |
+          mv ${{ github.workspace }}/mongodb/MongoDB-GitHub.go ${{ github.workspace }}/MongoDB-GitHub.go
+
           go run ${{ github.workspace }}/MongoDB-GitHub.go
           
           rm -f "${{ github.workspace }}/${{ inputs.filename-no-suffix }}.zip"
@@ -181,7 +184,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          pip install pymongo discord-webhook
+          pip install -r ${{ github.workspace }}/requirements.txt
 
       - name: Upload BSON-file to GitHub MongoDB-branch
         working-directory: "${{ github.workspace }}/temp/"

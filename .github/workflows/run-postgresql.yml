@@ -69,7 +69,8 @@ jobs:
             /Branch-GitHub.py
             /go.mod
             /go.sum
-            /PostgreSQL-GitHub.go
+            /postgresql/PostgreSQL-GitHub.go
+            /requirements.txt
             /UploadToDiscord-GitHub.py
           sparse-checkout-cone-mode: false
           token: "${{ secrets.PAT }}"
@@ -145,10 +146,12 @@ jobs:
 
       - name: Install Go dependencies
         run: |
-          go mod tidy
+          go mod download
 
       - name: Run PostgreSQL Go script
         run: |
+          mv ${{ github.workspace }}/postgresql/PostgreSQL-GitHub.go ${{ github.workspace }}/PostgreSQL-GitHub.go
+          
           go run ${{ github.workspace }}/PostgreSQL-GitHub.go
 
           rm -f "${{ github.workspace }}/${{ inputs.filename-no-suffix }}.zip"
@@ -176,7 +179,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          pip install pymongo discord-webhook
+          pip install -r ${{ github.workspace }}/requirements.txt
 
       - name: Upload SQL-file to GitHub PostgreSQL-branch
         working-directory: "${{ github.workspace }}/temp/"

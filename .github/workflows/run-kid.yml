@@ -72,7 +72,8 @@ jobs:
             /Branch-GitHub.py
             /go.mod
             /go.sum
-            /Kid-GitHub.go
+            /kid/Kid-GitHub.go
+            /requirements.txt
             /UploadToDiscord-GitHub.py
           sparse-checkout-cone-mode: false
           token: "${{ secrets.PAT }}"
@@ -159,10 +160,12 @@ jobs:
 
       - name: Install Go dependencies
         run: |
-          go mod tidy
+          go mod download
 
       - name: Run Kid Go script
         run: |
+          mv ${{ github.workspace }}/kid/Kid-GitHub.go ${{ github.workspace }}/Kid-GitHub.go
+
           go run ${{ github.workspace }}/Kid-GitHub.go
 
       - name: Archive JSON-file (Kid)
@@ -192,7 +195,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          pip install pymongo discord-webhook
+          pip install -r ${{ github.workspace }}/requirements.txt
 
       - name: Upload JSON-file to GitHub Kid-branch
         working-directory: "${{ github.workspace }}/temp/"

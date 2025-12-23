@@ -72,7 +72,8 @@ jobs:
             /Branch-GitHub.py
             /go.mod
             /go.sum
-            /KidVin-GitHub.go
+            /kidvin/KidVin-GitHub.go
+            /requirements.txt
             /UploadToDiscord-GitHub.py
           sparse-checkout-cone-mode: false
           token: "${{ secrets.PAT }}"
@@ -159,10 +160,12 @@ jobs:
 
       - name: Install Go dependencies
         run: |
-          go mod tidy
+          go mod download
 
       - name: Run KidVin Go script
         run: |
+          mv ${{ github.workspace }}/kidvin/KidVin-GitHub.go ${{ github.workspace }}/KidVin-GitHub.go
+
           go run ${{ github.workspace }}/KidVin-GitHub.go
 
       - name: Archive JSON-file (KidVin)
@@ -192,7 +195,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          pip install pymongo discord-webhook
+          pip install -r ${{ github.workspace }}/requirements.txt
 
       - name: Upload JSON-file to GitHub KidVin-branch
         working-directory: "${{ github.workspace }}/temp/"

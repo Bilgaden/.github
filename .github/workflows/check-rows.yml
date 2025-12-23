@@ -47,7 +47,7 @@ jobs:
           sparse-checkout: |
             /go.mod
             /go.sum
-            /CheckRows-GitHub.go
+            /checkrows/CheckRows-GitHub.go
           sparse-checkout-cone-mode: false
           token: "${{ secrets.PAT }}"
 
@@ -76,8 +76,10 @@ jobs:
 
       - name: Install Go dependencies
         run: |
-          go mod tidy
+          go mod download
 
       - name: Run CheckRows Go script
         run: |
+          mv ${{ github.workspace }}/checkrows/CheckRows-GitHub.go ${{ github.workspace }}/CheckRows-GitHub.go
+          
           go run ${{ github.workspace }}/CheckRows-GitHub.go
