@@ -1,4 +1,4 @@
-name: ESyn
+name: Run ESyn
 on:
   workflow_dispatch:
     inputs:
