@@ -1,0 +1,239 @@
+name: ESyn
+on:
+  workflow_dispatch:
+    inputs:
+      github-upload-limit:
+        description: 'GitHub Upload Limit (In MiB)'
+        required: true
+        type: string
+        default: "100"
+      worker-count:
+        description: 'Worker Count'
+        required: true
+        type: string
+        default: "32"
+      resume-id:
+        description: 'Resume ID'
+        required: true
+        type: string
+        default: "0"
+
+jobs:
+  esyn:
+    name: Run ESyn
+    runs-on: ubuntu-latest
+    steps:
+      - name: Display runner information
+        run: |
+          echo "cpu-core:       $(nproc --all)"
+          echo "cpu-model:      $(grep 'model name' /proc/cpuinfo | head -1 | cut -d: -f2- | sed 's/^[[:space:]]*//')"
+          echo "hostname:       $(hostname)"
+          echo "kernel-release: $(uname -r)"
+          echo "kernel-version: $(uname -v)"
+          echo "name:           $(grep '^NAME=' /etc/os-release | head -1 | cut -d= -f2- | tr -d '\"')"
+          echo "platform:       $(uname -s)"
+          echo "release:        $(grep '^VERSION_ID=' /etc/os-release | head -1 | cut -d= -f2- | tr -d '\"')"
+          echo "total-memory:   $(grep MemTotal /proc/meminfo | awk '{print $2 * 1024}')"
+
+      - name: Maximize build space
+        uses: AdityaGarg8/remove-unwanted-software@v5
+        with:
+          remove-dotnet: "true"
+          remove-android: "true"
+          remove-haskell: "true"
+          remove-codeql: "true"
+          remove-docker-images: "true"
+          remove-large-packages: "true"
+          remove-cached-tools: "true"
+          remove-swapfile: "true"
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          repository: "Bilgaden/ESStatistikListeParser-GitHub"
+          ref: "main"
+          path: "${{ github.workspace }}/"
+          sparse-checkout: |
+            /Bilgaden-PostgreSQL-ESyn.sql
+            /ESyn-GitHub.py
+            /esyn/ESyn-GitHub.go
+            /go.mod
+            /go.sum
+          sparse-checkout-cone-mode: false
+          token: "${{ secrets.PAT }}"
+
+      - name: Checkout Bilgaden repository
+        uses: actions/checkout@v6
+        with:
+          repository: "Bilgaden/Bilgaden"
+          ref: "main"
+          path: "${{ github.workspace }}/ESyn/"
+          sparse-checkout: |
+            !/*
+          sparse-checkout-cone-mode: false
+          token: "${{ secrets.PAT }}"
+
+      - name: Set up PostgreSQL
+        uses: ankane/setup-postgres@v1
+        with:
+          postgres-version: 18
+          database: bilgaden
+        
+      # - name: Import schema into PostgreSQL
+      #   run: |
+      #     psql -q -f Bilgaden-PostgreSQL-ESyn.sql
+
+      - name: Set up Git
+        working-directory: "${{ github.workspace }}/ESyn/"
+        run: |
+          gh auth login --with-token <<< "${{ secrets.PAT }}"
+
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global http.postBuffer 104857600
+
+          if git ls-remote --exit-code --heads origin esyn-sql; then
+              echo "Branch 'esyn-sql' already exists..."
+          else
+              echo "Branch 'esyn-sql' does not exist, creating..."
+              
+              git switch --orphan esyn-sql
+              git commit --allow-empty -m "Created esyn-sql branch"
+              git push origin esyn-sql
+          fi
+
+          if git ls-remote --exit-code --heads origin esyn-sql-temp; then
+              echo "Branch 'esyn-sql-temp' already exists..."
+          else
+              echo "Branch 'esyn-sql-temp' does not exist, creating..."
+              
+              git switch --orphan esyn-sql-temp
+              git commit --allow-empty -m "Created esyn-sql-temp branch"
+              git push origin esyn-sql-temp
+          fi
+
+          rm -rf ${{ github.workspace }}/ESyn/
+
+      - name: Checkout Bilgaden repository (ESyn-branch)
+        uses: actions/checkout@v6
+        with:
+          repository: "Bilgaden/Bilgaden"
+          ref: "esyn-sql"
+          path: "${{ github.workspace }}/ESyn/"
+          token: "${{ secrets.PAT }}"
+
+      - name: Stitch SQL-file back together
+        run: |
+          cat ${{ github.workspace }}/ESyn/*.part* > "${{ github.workspace }}/ESyn/esyn.dump.gz"
+          file "${{ github.workspace }}/ESyn/esyn.dump.gz"
+
+      - name: Import the entire database
+        run: |
+          pg_restore -1 --no-owner --no-privileges -d bilgaden "${{ github.workspace }}/ESyn/esyn.dump.gz"
+
+      - name: Checkout Bilgaden repository (ESyn-temp-branch)
+        uses: actions/checkout@v6
+        with:
+          repository: "Bilgaden/Bilgaden"
+          ref: "esyn-sql-temp"
+          path: "${{ github.workspace }}/ESyn/"
+          token: "${{ secrets.PAT }}"
+
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.21
+
+      - name: Install Go dependencies
+        run: |
+          go mod tidy
+
+      - name: Run ESyn Go script
+        run: |
+          mv ${{ github.workspace }}/esyn/ESyn-GitHub.go ${{ github.workspace }}/ESyn-GitHub.go
+        
+          go run ${{ github.workspace }}/ESyn-GitHub.go
+        env:
+          NUMBER_OF_WORKERS: ${{ inputs.worker-count }}
+          RESUME_ID: ${{ inputs.resume-id }}
+
+      - name: Dump the entire database
+        run: |
+          pg_dump --compress=gzip:9 --no-owner --no-privileges -Fc -d bilgaden -f ${{ github.workspace }}/bilgaden.dump.gz
+
+          dropdb --force bilgaden
+
+      - name: Split SQL-file
+        run: |
+          mkdir -p ${{ github.workspace }}/postgresql-split
+          split -d -b ${{ inputs.github-upload-limit }}m ${{ github.workspace }}/bilgaden.dump.gz ${{ github.workspace }}/ESyn/bilgaden.dump.gz.part
+
+      - name: Upload SQL-file to GitHub ESyn-temp-branch
+        working-directory: "${{ github.workspace }}/ESyn/"
+        run: |
+          for file in *; do
+            git add "$file"
+            git commit -m "Uploaded $file"
+            git push
+          done
+
+      - name: Delete current GitHub ESyn-branch
+        working-directory: "${{ github.workspace }}/ESyn/"
+        run: |
+          if git ls-remote --exit-code --heads origin esyn-sql; then
+              echo "Branch 'esyn-sql' exists. Deleting..."
+              
+              if git show-ref --verify --quiet refs/heads/esyn-sql; then
+                  git branch -D esyn-sql
+              fi
+              git push origin --delete esyn-sql
+          fi
+
+      - name: Rename GitHub ESyn-temp-branch to ESyn-branch
+        working-directory: "${{ github.workspace }}/ESyn/"
+        run: |
+          if git ls-remote --exit-code --heads origin esyn-sql-temp; then
+              echo "Renaming branch 'esyn-sql-temp' to 'esyn-sql'"
+              
+              if git show-ref --verify --quiet refs/heads/esyn-sql-temp; then
+                  git branch -m esyn-sql-temp esyn-sql
+              fi
+              git push origin :esyn-sql-temp esyn-sql
+          fi
+
+      - name: Trigger next Runner
+        if: ${{ env.RESUME_ID > 0 }}
+        uses: actions/github-script@v8
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'run-esyn.yml',
+              ref: 'main',
+              inputs: {
+                'github-upload-limit': '${{ inputs.github-upload-limit }}',
+                'worker-count': '${{ inputs.worker-count }}',
+                'resume-id': '${{ env.RESUME_ID }}'
+              }
+            })
+          github-token: ${{ secrets.PAT }}
+    
+      # - name: Archive BSON-file
+      #   run: |
+      #     mkdir -p ${{ github.workspace }}/mongodb-zip
+      #     zip -j -r -s 500m ${{ github.workspace }}/mongodb-zip/esyn.bson.gz.zip ${{ github.workspace }}/dump/bilgaden
+      #     #zip -j -r -s ${{ inputs.discord-upload-limit }}m ${{ github.workspace }}/mongodb-zip/esyn.bson.gz.zip ${{ github.workspace }}/dump/bilgaden
+
+      # - name: Split BSON-file
+      #   run: |
+      #     mkdir -p ${{ github.workspace }}/mongodb-split
+      #     split -d -b 500m ${{ github.workspace }}/dump/bilgaden/esyn.bson.gz ${{ github.workspace }}/mongodb-split/esyn.bson.gz.part
+      #     #split -d -b ${{ inputs.discord-upload-limit }}m ${{ github.workspace }}/dump/bilgaden/esyn.bson.gz ${{ github.workspace }}/mongodb-split/esyn.bson.gz.part
+
+      # - name: Add and push files to GitHub
+      #   working-directory: "${{ github.workspace }}/ESyn/"
+      #   run: |
+      #     git add --sparse ESyn/
+      #     git commit -m "Added ${{ matrix.range.from }}-${{ matrix.range.to }} files"
+      #     git push
