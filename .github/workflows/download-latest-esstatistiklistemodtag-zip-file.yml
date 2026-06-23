@@ -209,9 +209,14 @@ jobs:
           git rm -r --ignore-unmatch ESStatistikListeModtag
 
           mkdir -p ESStatistikListeModtag
-          split -d -b ${{ inputs.github-upload-limit }}m ${{ github.workspace }}/temp/${{ inputs.filename-no-suffix }}.zip ESStatistikListeModtag/${{ inputs.filename-no-suffix }}.zip.part
+          split -d -b ${{ inputs.github-upload-limit }}m ${{ inputs.filename-no-suffix }}.zip ESStatistikListeModtag/${{ inputs.filename-no-suffix }}.zip.part
 
           git add ESStatistikListeModtag/
+          if git diff --cached --quiet; then
+            echo "No changes to upload."
+            exit 0
+          fi
+
           git commit -m "Uploaded ${{ inputs.filename-no-suffix }}.zip"
           git push origin ${{ inputs.filename-no-suffix }}.zip
 
