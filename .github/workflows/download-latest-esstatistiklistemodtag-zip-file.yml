@@ -206,16 +206,14 @@ jobs:
       - name: Upload latest ESStatistikListeModtag ZIP-file to GitHub main-branch
         working-directory: "${{ github.workspace }}/temp/"
         run: |
-          mv ${{ github.workspace }}/Branch-GitHub.py ${{ github.workspace }}/temp/Branch-GitHub.py
-          
-          python ${{ github.workspace }}/temp/Branch-GitHub.py main
-        env:
-          FILENAME: "${{ inputs.filename-no-suffix }}.zip"
-          FILENAME_NO_SUFFIX: "${{ inputs.filename-no-suffix }}"
-          FILEPATH: "${{ github.workspace }}/temp/"
-          REPOOWNER: "${{ github.repository_owner }}"
-          BRANCHNAME: "${{ inputs.filename-no-suffix }}.zip"
-          GITHUB_UPLOAD_LIMIT: "${{ inputs.github-upload-limit }}"
+          git rm -r --ignore-unmatch ESStatistikListeModtag
+
+          mkdir -p ESStatistikListeModtag
+          split -d -b ${{ inputs.github-upload-limit }}m ${{ github.workspace }}/temp/${{ inputs.filename-no-suffix }}.zip ESStatistikListeModtag/${{ inputs.filename-no-suffix }}.zip.part
+
+          git add ESStatistikListeModtag/
+          git commit -m "Uploaded ${{ inputs.filename-no-suffix }}.zip"
+          git push origin ${{ inputs.filename-no-suffix }}.zip
 
       - name: Upload latest ESStatistikListeModtag ZIP-file to Discord
         run: |
