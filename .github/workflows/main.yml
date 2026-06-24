@@ -1,263 +1,116 @@
-name: Download Latest ESStatistikListeModtag ZIP-File
+name: Main Workflow
 
 on:
-  workflow_call:
-    inputs:
-      previous-filename-no-suffix:
-        description: 'Previous ESStatistikListeModtag Filename (No Suffix)'
-        required: true
-        type: string
-      filename-no-suffix:
-        description: 'ESStatistikListeModtag Filename (No Suffix)'
-        required: true
-        type: string
-      discord-upload-limit:
-        description: 'Discord Upload Limit (MiB)'
-        required: true
-        type: string
-      github-upload-limit:
-        description: 'GitHub Upload Limit (MiB)'
-        required: true
-        type: string
   workflow_dispatch:
     inputs:
-      previous-filename-no-suffix:
-        description: 'Previous ESStatistikListeModtag Filename (No Suffix)'
-        required: true
-        type: string
-      filename-no-suffix:
-        description: 'ESStatistikListeModtag Filename (No Suffix)'
-        required: true
-        type: string
       discord-upload-limit:
         description: 'Discord Upload Limit (MiB)'
         required: true
         type: string
+        default: '500'
       github-upload-limit:
         description: 'GitHub Upload Limit (MiB)'
         required: true
         type: string
+        default: '100'
 
 jobs:
+  # ---- JOBS ---- #
+  get-latest-esstatistiklistemodtag-zip-file:
+    name: Get Latest ESStatistikListeModtag ZIP-File
+    uses: ./.github/workflows/get-latest-esstatistiklistemodtag-zip-file.yml
+    secrets: inherit
+
   download-latest-esstatistiklistemodtag-zip-file:
     name: Download Latest ESStatistikListeModtag ZIP-File
-    runs-on: ubuntu-latest
-    steps:
-      - name: Display runner information
-        run: |
-          echo "cpu-core:       $(nproc --all)"
-          echo "cpu-model:      $(grep 'model name' /proc/cpuinfo | head -1 | cut -d: -f2- | sed 's/^[[:space:]]*//')"
-          echo "hostname:       $(hostname)"
-          echo "kernel-release: $(uname -r)"
-          echo "kernel-version: $(uname -v)"
-          echo "name:           $(grep '^NAME=' /etc/os-release | head -1 | cut -d= -f2- | tr -d '\"')"
-          echo "platform:       $(uname -s)"
-          echo "release:        $(grep '^VERSION_ID=' /etc/os-release | head -1 | cut -d= -f2- | tr -d '\"')"
-          echo "total-memory:   $(grep MemTotal /proc/meminfo | awk '{print $2 * 1024}')"
-          
-      - name: Maximize build space
-        uses: AdityaGarg8/remove-unwanted-software@v5
-        with:
-          remove-dotnet: "true"
-          remove-android: "true"
-          remove-haskell: "true"
-          remove-codeql: "true"
-          remove-docker-images: "true"
-          remove-large-packages: "true"
-          remove-cached-tools: "true"
-          remove-swapfile: "true"
-          
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          repository: "${{ github.repository_owner }}/ESStatistikListeParser-GitHub"
-          ref: "main"
-          path: "${{ github.workspace }}/"
-          sparse-checkout: |
-            /Branch-GitHub.py
-            /ESStatistikListeModtag-GitHub.py
-            /requirements.txt
-            /UploadToDiscord-GitHub.py
-          sparse-checkout-cone-mode: false
-          token: "${{ secrets.PAT }}"
+    needs: get-latest-esstatistiklistemodtag-zip-file
+    if: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.has-found-new-zip-file == '1' }}
+    uses: ./.github/workflows/download-latest-esstatistiklistemodtag-zip-file.yml
+    secrets: inherit
+    with:
+      previous-filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.previous-filename-no-suffix }}
+      filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filename-no-suffix }}
+      discord-upload-limit: "${{ inputs.discord-upload-limit }}"
+      github-upload-limit: "${{ inputs.github-upload-limit }}"
 
-      - name: Create latest ESStatistikListeModtag repository and set workflow permissions
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const repoName = `${{ inputs.filename-no-suffix }}`;
-            const repoOwner = context.repo.owner;
-      
-            const payload = {
-              org: repoOwner,
-              name: repoName,
-              private: true,
-              visibility: "private",
-              has_issues: false,
-              has_projects: false,
-              has_wiki: false,
-              has_discussions: false,
-              has_downloads: true,
-              is_template: false,
-              auto_init: true,
-              allow_squash_merge: true,
-              allow_merge_commit: false,
-              allow_rebase_merge: false,
-              allow_auto_merge: true,
-              delete_branch_on_merge: true,
-              use_squash_pr_title_as_default: true,
-              squash_merge_commit_title: "PR_TITLE",
-              squash_merge_commit_message: "BLANK"
-            };
-      
-            try {
-              const response = await github.rest.repos.createInOrg(payload);
-              core.info(`Created ${response.data.owner.login}/${response.data.name}`);
-            } catch (err) {
-              if (err.status === 422 && err.message.includes('name already exists')) {
-                core.info(`Repository ${repoOwner}/${repoName} already exists, skipping creation.`);
-              } else {
-                throw err;
-              }
-            }
-      
-            await github.rest.repos.get({ owner: repoOwner, repo: repoName });
+  check-rows:
+    name: Check Rows
+    needs: [get-latest-esstatistiklistemodtag-zip-file, download-latest-esstatistiklistemodtag-zip-file]
+    uses: ./.github/workflows/check-rows.yml
+    secrets: inherit
+    with:
+      filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filename-no-suffix }}
 
-            try {
-              await github.request(
-                'PUT /repos/{owner}/{repo}/actions/permissions/workflow',
-                {
-                  owner: repoOwner,
-                  repo: repoName,
-                  default_workflow_permissions: 'write',
-                  can_approve_pull_request_reviews: true
-                }
-              );
-              core.info(`Workflow permissions set for ${repoOwner}/${repoName}`);
-            } catch (err) {
-              throw err;
-            }
-          github-token: ${{ secrets.PAT }}
+  run-mongodb:
+    name: Run MongoDB
+    needs: [get-latest-esstatistiklistemodtag-zip-file, download-latest-esstatistiklistemodtag-zip-file, check-rows]
+    uses: ./.github/workflows/run-mongodb.yml
+    secrets: inherit
+    with:
+      filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filename-no-suffix }}
+      discord-upload-limit: "${{ inputs.discord-upload-limit }}"
+      github-upload-limit: "${{ inputs.github-upload-limit }}"
 
-      - name: Checkout latest ESStatistikListeModtag repository
-        uses: actions/checkout@v6
-        with:
-          repository: "${{ github.repository_owner }}/${{ inputs.filename-no-suffix }}"
-          ref: "main"
-          path: "${{ github.workspace }}/temp/"
-          sparse-checkout: |
-            !/*
-          sparse-checkout-cone-mode: false
-          token: "${{ secrets.PAT }}"
+  run-postgresql:
+    name: Run PostgreSQL
+    needs: [get-latest-esstatistiklistemodtag-zip-file, download-latest-esstatistiklistemodtag-zip-file, check-rows]
+    uses: ./.github/workflows/run-postgresql.yml
+    secrets: inherit
+    with:
+      filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filename-no-suffix }}
+      discord-upload-limit: "${{ inputs.discord-upload-limit }}"
+      github-upload-limit: "${{ inputs.github-upload-limit }}"
 
-      - name: Set up Git
-        working-directory: "${{ github.workspace }}/temp/"
-        run: |
-          gh auth login --with-token <<< "${{ secrets.PAT }}"
+  run-kidvin:
+    name: Run KidVin
+    needs: [get-latest-esstatistiklistemodtag-zip-file, download-latest-esstatistiklistemodtag-zip-file, check-rows]
+    uses: ./.github/workflows/run-kidvin.yml
+    secrets: inherit
+    with:
+      previous-filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.previous-filename-no-suffix }}
+      filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filename-no-suffix }}
+      discord-upload-limit: "${{ inputs.discord-upload-limit }}"
+      github-upload-limit: "${{ inputs.github-upload-limit }}"
 
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global http.postBuffer 104857600
-          
-          if git ls-remote --exit-code --heads origin ${{ inputs.filename-no-suffix }}.zip; then
-              echo "Branch '${{ inputs.filename-no-suffix }}.zip' already exists, deleting and recreating..."
-              
-              if git show-ref --verify --quiet refs/heads/${{ inputs.filename-no-suffix }}.zip; then
-                  git branch -D ${{ inputs.filename-no-suffix }}.zip
-              fi
-              git push origin --delete ${{ inputs.filename-no-suffix }}.zip
-              git checkout -b ${{ inputs.filename-no-suffix }}.zip
-          else
-              echo "Branch '${{ inputs.filename-no-suffix }}.zip' does not exist, creating..."
-              
-              git checkout -b ${{ inputs.filename-no-suffix }}.zip
-          fi
+  run-kid:
+    name: Run Kid
+    needs: [get-latest-esstatistiklistemodtag-zip-file, download-latest-esstatistiklistemodtag-zip-file, check-rows]
+    uses: ./.github/workflows/run-kid.yml
+    secrets: inherit
+    with:
+      previous-filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.previous-filename-no-suffix }}
+      filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filename-no-suffix }}
+      discord-upload-limit: "${{ inputs.discord-upload-limit }}"
+      github-upload-limit: "${{ inputs.github-upload-limit }}"
 
-          git push -u origin ${{ inputs.filename-no-suffix }}.zip
+  run-vin:
+    name: Run Vin
+    needs: [get-latest-esstatistiklistemodtag-zip-file, download-latest-esstatistiklistemodtag-zip-file, check-rows]
+    uses: ./.github/workflows/run-vin.yml
+    secrets: inherit
+    with:
+      previous-filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.previous-filename-no-suffix }}
+      filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filename-no-suffix }}
+      discord-upload-limit: "${{ inputs.discord-upload-limit }}"
+      github-upload-limit: "${{ inputs.github-upload-limit }}"
 
-      - name: Install Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.x'
+  # ---- TRIGGER NEW WORKFLOW ---- #
+  # trigger-new-workflow:
+  #   name: Trigger New Workflow
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Wait until the next minute
+  #       run: |
+  #         now_sec=$(date -u +%S)
+  #         sleep_for=$((60 - 10#$now_sec))
 
-      - name: Install Python dependencies
-        run: |
-          pip install -r ${{ github.workspace }}/requirements.txt
+  #         if [ "$sleep_for" -eq 60 ]; then sleep_for=0; fi
 
-      - name: Download latest ESStatistikListeModtag ZIP-file
-        run: |
-          mv ${{ github.workspace }}/ESStatistikListeModtag-GitHub.py ${{ github.workspace }}/temp/ESStatistikListeModtag-GitHub.py
-          
-          python ${{ github.workspace }}/temp/ESStatistikListeModtag-GitHub.py
-        env:
-          FILENAME: "${{ inputs.filename-no-suffix }}.zip"
-          FILEPATH: "${{ github.workspace }}/temp/"
+  #         sleep "$sleep_for"
 
-      - name: Archive latest ESStatistikListeModtag ZIP-file
-        run: |
-          mkdir -p ${{ github.workspace }}/zip
-          zip -j -r -s ${{ inputs.discord-upload-limit }}m ${{ github.workspace }}/zip/${{ inputs.filename-no-suffix }}.zip ${{ github.workspace }}/temp/${{ inputs.filename-no-suffix }}.zip
-
-      - name: Split latest ESStatistikListeModtag ZIP-file
-        run: |
-          mkdir -p ${{ github.workspace }}/split
-          split -d -b ${{ inputs.discord-upload-limit }}m ${{ github.workspace }}/temp/${{ inputs.filename-no-suffix }}.zip ${{ github.workspace }}/split/${{ inputs.filename-no-suffix }}.zip.part
-
-      - name: Upload latest ESStatistikListeModtag ZIP-file to GitHub main-branch
-        working-directory: "${{ github.workspace }}/temp/"
-        run: |
-          mv ${{ github.workspace }}/Branch-GitHub.py ${{ github.workspace }}/temp/Branch-GitHub.py
-          
-          python ${{ github.workspace }}/temp/Branch-GitHub.py main
-        env:
-          FILENAME: "${{ inputs.filename-no-suffix }}.zip"
-          FILENAME_NO_SUFFIX: "${{ inputs.filename-no-suffix }}"
-          FILEPATH: "${{ github.workspace }}/temp/"
-          REPOOWNER: "${{ github.repository_owner }}"
-          BRANCHNAME: "${{ inputs.filename-no-suffix }}.zip"
-          GITHUB_UPLOAD_LIMIT: "${{ inputs.github-upload-limit }}"
-
-      - name: Upload latest ESStatistikListeModtag ZIP-file to Discord
-        run: |
-          python ${{ github.workspace }}/UploadToDiscord-GitHub.py normal
-        env:
-          FILENAME: "${{ inputs.filename-no-suffix }}.zip"
-
-      - name: Set up latest ESStatistikListeModtag repository branches
-        working-directory: "${{ github.workspace }}/temp/"
-        run: |
-          git switch --orphan empty
-          git commit --allow-empty -m "Created Empty branch"
-          git push origin empty
-
-          git switch --orphan mongodb
-          git commit --allow-empty -m "Created MongoDB branch"
-          git push origin mongodb
-
-          git switch --orphan postgresql
-          git commit --allow-empty -m "Created PostgreSQL branch"
-          git push origin postgresql
-
-          git switch --orphan kidvin
-          git commit --allow-empty -m "Created KidVin branch"
-          git push origin kidvin
-          
-          git switch --orphan kid
-          git commit --allow-empty -m "Created Kid branch"
-          git push origin kid
-
-          git switch --orphan vin
-          git commit --allow-empty -m "Created Vin branch"
-          git push origin vin
-
-          git switch --orphan newkidvin
-          git commit --allow-empty -m "Created NewKidVin branch"
-          git push origin newkidvin
-          
-          git switch --orphan newkid
-          git commit --allow-empty -m "Created NewKid branch"
-          git push origin newkid
-
-          git switch --orphan newvin
-          git commit --allow-empty -m "Created NewVin branch"
-          git push origin newvin
+  #     - name: Trigger Workflow Dispatch
+  #       uses: benc-uk/workflow-dispatch@v1
+  #       with:
+  #         workflow: main.yml
+  #         repo: "${{ github.repository }}"
+  #         token: "${{ secrets.PAT }}"
