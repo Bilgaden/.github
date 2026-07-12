@@ -65,7 +65,7 @@ jobs:
           remove-docker-images: "true"
           remove-large-packages: "true"
           remove-cached-tools: "true"
-          remove-swapfile: "true"
+          # remove-swapfile: "true"
           
       - name: Checkout repository
         uses: actions/checkout@v6
