@@ -65,10 +65,10 @@ jobs:
           remove-docker-images: "true"
           remove-large-packages: "true"
           remove-cached-tools: "true"
-          # remove-swapfile: "true"
+          remove-swapfile: "true"
           
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: "${{ github.repository_owner }}/ESStatistikListeParser-GitHub"
           ref: "main"
@@ -140,7 +140,7 @@ jobs:
           github-token: ${{ secrets.PAT }}
 
       - name: Checkout latest ESStatistikListeModtag repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: "${{ github.repository_owner }}/${{ inputs.filename-no-suffix }}"
           ref: "main"

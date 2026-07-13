@@ -59,7 +59,7 @@ jobs:
           remove-swapfile: "true"
 
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: "${{ github.repository_owner }}/ESStatistikListeParser-GitHub"
           ref: "main"
@@ -76,7 +76,7 @@ jobs:
           token: "${{ secrets.PAT }}"
 
       - name: Checkout ESStatistikListeModtag repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: "${{ github.repository_owner }}/${{ inputs.filename-no-suffix }}"
           ref: "main"
@@ -104,7 +104,7 @@ jobs:
           rm -rf ${{ github.workspace }}/temp/
 
       - name: Checkout ESStatistikListeModtag repository (PostgreSQL-branch)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: "${{ github.repository_owner }}/${{ inputs.filename-no-suffix }}"
           ref: "postgresql"

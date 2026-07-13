@@ -36,7 +36,7 @@ jobs:
           echo "total-memory:   $(grep MemTotal /proc/meminfo | awk '{print $2 * 1024}')"
       
       - name: Checkout ESStatistikListeParser-GitHub repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: "${{ github.repository_owner }}/ESStatistikListeParser-GitHub"
           path: "${{ github.workspace }}/"

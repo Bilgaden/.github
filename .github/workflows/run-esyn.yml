@@ -48,7 +48,7 @@ jobs:
           remove-swapfile: "true"
 
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: "Bilgaden/ESStatistikListeParser-GitHub"
           ref: "main"
@@ -63,7 +63,7 @@ jobs:
           token: "${{ secrets.PAT }}"
 
       - name: Checkout Bilgaden repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: "Bilgaden/Bilgaden"
           ref: "main"
@@ -115,7 +115,7 @@ jobs:
           rm -rf ${{ github.workspace }}/ESyn/
 
       - name: Checkout Bilgaden repository (ESyn-branch)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: "Bilgaden/Bilgaden"
           ref: "esyn-sql"
@@ -132,7 +132,7 @@ jobs:
           pg_restore -1 --no-owner --no-privileges -d bilgaden "${{ github.workspace }}/ESyn/esyn.dump.gz"
 
       - name: Checkout Bilgaden repository (ESyn-temp-branch)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: "Bilgaden/Bilgaden"
           ref: "esyn-sql-temp"
