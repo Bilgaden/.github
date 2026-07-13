@@ -67,9 +67,9 @@ jobs:
           path: "${{ github.workspace }}/"
           sparse-checkout: |
             /Branch-GitHub.py
-            /go.mod
-            /go.sum
-            /mongodb/MongoDB-GitHub.go
+            /mongodb-rs/Cargo.toml
+            /mongodb-rs/Cargo.lock
+            /mongodb-rs/src/main.rs
             /requirements.txt
             /UploadToDiscord-GitHub.py
           sparse-checkout-cone-mode: false
@@ -141,20 +141,16 @@ jobs:
 
           git push -u origin ${{ inputs.filename-no-suffix }}.zip-mongodb
 
-      - name: Install Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: 'stable'
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Install Go dependencies
+      - name: Build MongoDB Rust script
         run: |
-          go mod download
+          cargo build --release --manifest-path "${{ github.workspace }}/mongodb-rs/Cargo.toml"
 
-      - name: Run MongoDB Go script
+      - name: Run MongoDB Rust script
         run: |
-          mv ${{ github.workspace }}/mongodb/MongoDB-GitHub.go ${{ github.workspace }}/MongoDB-GitHub.go
-
-          go run ${{ github.workspace }}/MongoDB-GitHub.go
+          ${{ github.workspace }}/mongodb-rs/target/release/mongodb
           
           rm -f "${{ github.workspace }}/${{ inputs.filename-no-suffix }}.zip"
 
