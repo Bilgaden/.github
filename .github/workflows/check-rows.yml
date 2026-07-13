@@ -45,9 +45,9 @@ jobs:
           ref: "main"
           path: "${{ github.workspace }}/"
           sparse-checkout: |
-            /go.mod
-            /go.sum
-            /checkrows/CheckRows-GitHub.go
+            /checkrows-rs/Cargo.toml
+            /checkrows-rs/Cargo.lock
+            /checkrows-rs/src/main.rs
           sparse-checkout-cone-mode: false
           token: "${{ secrets.PAT }}"
 
@@ -69,17 +69,13 @@ jobs:
           
           rm -rf ${{ github.workspace }}/temp/
           
-      - name: Install Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: 'stable'
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Install Go dependencies
+      - name: Build CheckRows Rust script
         run: |
-          go mod download
+          cargo build --release --manifest-path "${{ github.workspace }}/checkrows-rs/Cargo.toml"
 
-      - name: Run CheckRows Go script
+      - name: Run CheckRows Rust script
         run: |
-          mv ${{ github.workspace }}/checkrows/CheckRows-GitHub.go ${{ github.workspace }}/CheckRows-GitHub.go
-          
-          go run ${{ github.workspace }}/CheckRows-GitHub.go
+          ${{ github.workspace }}/checkrows-rs/target/release/checkrows
