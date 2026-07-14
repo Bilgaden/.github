@@ -15,6 +15,10 @@ on:
         description: 'GitHub Upload Limit (MiB)'
         required: true
         type: string
+      dump-database:
+        description: 'Dump database'
+        required: true
+        type: boolean
   workflow_dispatch:
     inputs:
       filename-no-suffix:
@@ -29,11 +33,16 @@ on:
         description: 'GitHub Upload Limit (MiB)'
         required: true
         type: string
+      dump-database:
+        description: 'Dump database'
+        required: true
+        type: boolean
+        default: true
 
 jobs:
   run-postgresql:
     name: Run PostgreSQL
-    runs-on: ubuntu-latest
+    runs-on: macos-26-intel
     steps:
       - name: Display runner information
         run: |
@@ -47,16 +56,23 @@ jobs:
           echo "release:        $(grep '^VERSION_ID=' /etc/os-release | head -1 | cut -d= -f2- | tr -d '\"')"
           echo "total-memory:   $(grep MemTotal /proc/meminfo | awk '{print $2 * 1024}')"
           
-      - name: Maximize build space
-        uses: AdityaGarg8/remove-unwanted-software@v5
-        with:
-          remove-dotnet: "true"
-          remove-android: "true"
-          remove-haskell: "true"
-          remove-codeql: "true"
-          remove-docker-images: "true"
-          remove-cached-tools: "true"
-          remove-swapfile: "true"
+      # - name: Maximize macOS Disk Space
+      #   run: |
+      #     echo "==> Available space before cleanup"
+      #     echo
+      #     df -h
+      #     sudo rm -rf /Users/runner/Library/Android/sdk
+      #     sudo rm -rf /usr/local/share/dotnet
+      #     sudo rm -rf /Applications/Xcode_*.app
+      #     sudo rm -rf /Users/runner/hostedtoolcache
+      #     rm -rf $(brew --cache)
+      #     echo "==> Available space after cleanup"
+      #     echo
+      #     df -h
+
+      - name: Install coreutils from homebrew
+        run: |
+          brew install coreutils
 
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -67,11 +83,12 @@ jobs:
           sparse-checkout: |
             /Bilgaden-PostgreSQL.sql
             /Branch-GitHub.py
-            /go.mod
-            /go.sum
-            /postgresql/PostgreSQL-GitHub.go
             /requirements.txt
             /UploadToDiscord-GitHub.py
+
+            /postgresql-rs/Cargo.toml
+            /postgresql-rs/Cargo.lock
+            /postgresql-rs/src/main.rs
           sparse-checkout-cone-mode: false
           token: "${{ secrets.PAT }}"
 
@@ -139,49 +156,51 @@ jobs:
 
           git push -u origin ${{ inputs.filename-no-suffix }}.zip-postgresql
 
-      - name: Install Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: 'stable'
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Install Go dependencies
+      - name: Build PostgreSQL Rust script
         run: |
-          go mod download
+          cargo build --release --manifest-path "${{ github.workspace }}/postgresql-rs/Cargo.toml"
 
-      - name: Run PostgreSQL Go script
+      - name: Run PostgreSQL Rust script
         run: |
-          mv ${{ github.workspace }}/postgresql/PostgreSQL-GitHub.go ${{ github.workspace }}/PostgreSQL-GitHub.go
+          ${{ github.workspace }}/postgresql-rs/target/release/postgresql
           
-          go run ${{ github.workspace }}/PostgreSQL-GitHub.go
-
           rm -f "${{ github.workspace }}/${{ inputs.filename-no-suffix }}.zip"
 
       - name: Dump the entire database
+        if: ${{ inputs.dump-database }}
         run: |
           pg_dump --compress=gzip:9 --no-owner --no-privileges -Fc -d bilgaden -f ${{ github.workspace }}/bilgaden.dump.gz
 
           dropdb --force bilgaden
     
       - name: Archive SQL-file
+        if: ${{ inputs.dump-database }}
         run: |
           mkdir -p ${{ github.workspace }}/postgresql-zip
           zip -j -r -s ${{ inputs.discord-upload-limit }}m ${{ github.workspace }}/postgresql-zip/${{ inputs.filename-no-suffix }}.dump.gz.zip ${{ github.workspace }}/bilgaden.dump.gz
 
       - name: Split SQL-file
+        if: ${{ inputs.dump-database }}
         run: |
           mkdir -p ${{ github.workspace }}/postgresql-split
-          split -d -b ${{ inputs.discord-upload-limit }}m ${{ github.workspace }}/bilgaden.dump.gz ${{ github.workspace }}/postgresql-split/${{ inputs.filename-no-suffix }}.dump.gz.part
+          gsplit -d -b ${{ inputs.discord-upload-limit }}m ${{ github.workspace }}/bilgaden.dump.gz ${{ github.workspace }}/postgresql-split/${{ inputs.filename-no-suffix }}.dump.gz.part
 
       - name: Install Python
+        if: ${{ inputs.dump-database }}
         uses: actions/setup-python@v6
         with:
           python-version: '3.x'
 
       - name: Install Python dependencies
+        if: ${{ inputs.dump-database }}
         run: |
           pip install -r ${{ github.workspace }}/requirements.txt
 
       - name: Upload SQL-file to GitHub PostgreSQL-branch
+        if: ${{ inputs.dump-database }}
         working-directory: "${{ github.workspace }}/temp/"
         run: |
           mv ${{ github.workspace }}/bilgaden.dump.gz ${{ github.workspace }}/temp/bilgaden.dump.gz
@@ -197,6 +216,7 @@ jobs:
           GITHUB_UPLOAD_LIMIT: "${{ inputs.github-upload-limit }}"
 
       - name: Upload SQL-file to Discord
+        if: ${{ inputs.dump-database }}
         run: |
           python ${{ github.workspace }}/UploadToDiscord-GitHub.py postgresql
         env:
