@@ -50,6 +50,7 @@ jobs:
       filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filename-no-suffix }}
       discord-upload-limit: "${{ inputs.discord-upload-limit }}"
       github-upload-limit: "${{ inputs.github-upload-limit }}"
+      dump-database: true
 
   run-postgresql:
     name: Run PostgreSQL
@@ -60,17 +61,7 @@ jobs:
       filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filename-no-suffix }}
       discord-upload-limit: "${{ inputs.discord-upload-limit }}"
       github-upload-limit: "${{ inputs.github-upload-limit }}"
-
-  run-kidvin:
-    name: Run KidVin
-    needs: [get-latest-esstatistiklistemodtag-zip-file, download-latest-esstatistiklistemodtag-zip-file, check-rows]
-    uses: ./.github/workflows/run-kidvin.yml
-    secrets: inherit
-    with:
-      previous-filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.previous-filename-no-suffix }}
-      filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filename-no-suffix }}
-      discord-upload-limit: "${{ inputs.discord-upload-limit }}"
-      github-upload-limit: "${{ inputs.github-upload-limit }}"
+      dump-database: true
 
   run-kid:
     name: Run Kid
@@ -87,6 +78,17 @@ jobs:
     name: Run Vin
     needs: [get-latest-esstatistiklistemodtag-zip-file, download-latest-esstatistiklistemodtag-zip-file, check-rows]
     uses: ./.github/workflows/run-vin.yml
+    secrets: inherit
+    with:
+      previous-filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.previous-filename-no-suffix }}
+      filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.filename-no-suffix }}
+      discord-upload-limit: "${{ inputs.discord-upload-limit }}"
+      github-upload-limit: "${{ inputs.github-upload-limit }}"
+
+  run-kidvin:
+    name: Run KidVin
+    needs: [get-latest-esstatistiklistemodtag-zip-file, download-latest-esstatistiklistemodtag-zip-file, check-rows]
+    uses: ./.github/workflows/run-kidvin.yml
     secrets: inherit
     with:
       previous-filename-no-suffix: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.previous-filename-no-suffix }}
