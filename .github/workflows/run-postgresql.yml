@@ -165,7 +165,7 @@ jobs:
       - name: Dump the entire database
         if: ${{ inputs.dump-database }}
         run: |
-          pg_dump --compress=gzip:9 --no-owner --no-privileges -Fc -d bilgaden -f ${{ github.workspace }}/bilgaden.dump.gz
+          pg_dump --compress=gzip:9 --no-owner --no-privileges -Fc -d bilgaden --schema dmrStatistikudtraek -f ${{ github.workspace }}/bilgaden.dump.gz
 
           dropdb --force bilgaden
     
