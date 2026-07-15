@@ -192,21 +192,21 @@ jobs:
         run: |
           pip install -r ${{ github.workspace }}/requirements.txt
 
-      - name: Upload SQL-file to GitHub PostgreSQL-branch
-        if: ${{ inputs.dump-database }}
-        working-directory: "${{ github.workspace }}/temp/"
-        run: |
-          mv ${{ github.workspace }}/bilgaden.dump.gz ${{ github.workspace }}/temp/bilgaden.dump.gz
-          mv ${{ github.workspace }}/Branch-GitHub.py ${{ github.workspace }}/temp/Branch-GitHub.py
+      # - name: Upload SQL-file to GitHub PostgreSQL-branch
+      #   if: ${{ inputs.dump-database }}
+      #   working-directory: "${{ github.workspace }}/temp/"
+      #   run: |
+      #     mv ${{ github.workspace }}/bilgaden.dump.gz ${{ github.workspace }}/temp/bilgaden.dump.gz
+      #     mv ${{ github.workspace }}/Branch-GitHub.py ${{ github.workspace }}/temp/Branch-GitHub.py
           
-          python ${{ github.workspace }}/temp/Branch-GitHub.py postgresql
-        env:
-          FILENAME: "bilgaden.dump.gz"
-          FILENAME_NO_SUFFIX: "${{ inputs.filename-no-suffix }}"
-          FILEPATH: "${{ github.workspace }}/temp/"
-          REPOOWNER: "${{ github.repository_owner }}"
-          BRANCHNAME: "${{ inputs.filename-no-suffix }}.zip-postgresql"
-          GITHUB_UPLOAD_LIMIT: "${{ inputs.github-upload-limit }}"
+      #     python ${{ github.workspace }}/temp/Branch-GitHub.py postgresql
+      #   env:
+      #     FILENAME: "bilgaden.dump.gz"
+      #     FILENAME_NO_SUFFIX: "${{ inputs.filename-no-suffix }}"
+      #     FILEPATH: "${{ github.workspace }}/temp/"
+      #     REPOOWNER: "${{ github.repository_owner }}"
+      #     BRANCHNAME: "${{ inputs.filename-no-suffix }}.zip-postgresql"
+      #     GITHUB_UPLOAD_LIMIT: "${{ inputs.github-upload-limit }}"
 
       - name: Upload SQL-file to Discord
         if: ${{ inputs.dump-database }}
