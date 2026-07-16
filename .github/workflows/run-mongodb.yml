@@ -85,9 +85,7 @@ jobs:
             /requirements.txt
             /UploadToDiscord-GitHub.py
 
-            /mongodb-rs/Cargo.toml
-            /mongodb-rs/Cargo.lock
-            /mongodb-rs/src/main.rs
+            /mongodb-rs/
           sparse-checkout-cone-mode: false
           token: "${{ secrets.PAT }}"
 

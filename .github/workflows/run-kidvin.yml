@@ -65,16 +65,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
-          repository: "AllanVester/ESStatistikListeParser-GitHub"
+          repository: "${{ github.repository_owner }}/ESStatistikListeParser-GitHub"
           ref: "main"
           path: "${{ github.workspace }}/"
           sparse-checkout: |
             /Branch-GitHub.py
-            /go.mod
-            /go.sum
-            /kidvin/KidVin-GitHub.go
             /requirements.txt
             /UploadToDiscord-GitHub.py
+
+            /kidvin-rs/
           sparse-checkout-cone-mode: false
           token: "${{ secrets.PAT }}"
 
@@ -153,20 +152,16 @@ jobs:
 
           git push -u origin ${{ inputs.filename-no-suffix }}.zip-kidvin
 
-      - name: Install Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: 'stable'
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Install Go dependencies
+      - name: Build KidVin Rust script
         run: |
-          go mod download
+          cargo build --release --manifest-path "${{ github.workspace }}/kidvin-rs/Cargo.toml"
 
-      - name: Run KidVin Go script
+      - name: Run KidVin Rust script
         run: |
-          mv ${{ github.workspace }}/kidvin/KidVin-GitHub.go ${{ github.workspace }}/KidVin-GitHub.go
-
-          go run ${{ github.workspace }}/KidVin-GitHub.go
+          ${{ github.workspace }}/kidvin-rs/target/release/kidvin
 
       - name: Archive JSON-file (KidVin)
         run: |
@@ -212,7 +207,7 @@ jobs:
           BRANCHNAME: "${{ inputs.filename-no-suffix }}.zip-kidvin"
           GITHUB_UPLOAD_LIMIT: "${{ inputs.github-upload-limit }}"
 
-      - name: Upload JSON-file to Discord KidVin
+      - name: Upload JSON-file to Discord (KidVin)
         run: |
           python ${{ github.workspace }}/UploadToDiscord-GitHub.py kidvin
         env:
@@ -269,7 +264,7 @@ jobs:
           BRANCHNAME: "${{ inputs.filename-no-suffix }}.zip-newkidvin"
           GITHUB_UPLOAD_LIMIT: "${{ inputs.github-upload-limit }}"
 
-      - name: Upload JSON-file to Discord NewKidVin
+      - name: Upload JSON-file to Discord (NewKidVin)
         run: |
           python ${{ github.workspace }}/UploadToDiscord-GitHub.py newkidvin
         env:

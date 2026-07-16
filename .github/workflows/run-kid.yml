@@ -65,16 +65,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
-          repository: "AllanVester/ESStatistikListeParser-GitHub"
+          repository: "${{ github.repository_owner }}/ESStatistikListeParser-GitHub"
           ref: "main"
           path: "${{ github.workspace }}/"
           sparse-checkout: |
             /Branch-GitHub.py
-            /go.mod
-            /go.sum
-            /kid/Kid-GitHub.go
             /requirements.txt
             /UploadToDiscord-GitHub.py
+
+            /kid-rs/
           sparse-checkout-cone-mode: false
           token: "${{ secrets.PAT }}"
 
@@ -153,20 +152,16 @@ jobs:
 
           git push -u origin ${{ inputs.filename-no-suffix }}.zip-kid
 
-      - name: Install Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: 'stable'
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Install Go dependencies
+      - name: Build Kid Rust script
         run: |
-          go mod download
+          cargo build --release --manifest-path "${{ github.workspace }}/kid-rs/Cargo.toml"
 
-      - name: Run Kid Go script
+      - name: Run Kid Rust script
         run: |
-          mv ${{ github.workspace }}/kid/Kid-GitHub.go ${{ github.workspace }}/Kid-GitHub.go
-
-          go run ${{ github.workspace }}/Kid-GitHub.go
+          ${{ github.workspace }}/kid-rs/target/release/kid
 
       - name: Archive JSON-file (Kid)
         run: |
@@ -212,7 +207,7 @@ jobs:
           BRANCHNAME: "${{ inputs.filename-no-suffix }}.zip-kid"
           GITHUB_UPLOAD_LIMIT: "${{ inputs.github-upload-limit }}"
 
-      - name: Upload JSON-file to Discord Kid
+      - name: Upload JSON-file to Discord (Kid)
         run: |
           python ${{ github.workspace }}/UploadToDiscord-GitHub.py kid
         env:
@@ -269,7 +264,7 @@ jobs:
           BRANCHNAME: "${{ inputs.filename-no-suffix }}.zip-newkid"
           GITHUB_UPLOAD_LIMIT: "${{ inputs.github-upload-limit }}"
 
-      - name: Upload JSON-file to Discord NewKid
+      - name: Upload JSON-file to Discord (NewKid)
         run: |
           python ${{ github.workspace }}/UploadToDiscord-GitHub.py newkid
         env:
