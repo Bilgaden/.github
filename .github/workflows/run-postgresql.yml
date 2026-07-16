@@ -179,7 +179,7 @@ jobs:
         if: ${{ inputs.dump-database }}
         run: |
           mkdir -p ${{ github.workspace }}/postgresql-split
-          gsplit -d -b ${{ inputs.discord-upload-limit }}m ${{ github.workspace }}/bilgaden.dump.gz ${{ github.workspace }}/postgresql-split/${{ inputs.filename-no-suffix }}.dump.gz.part
+          split -d -b ${{ inputs.discord-upload-limit }}m ${{ github.workspace }}/bilgaden.dump.gz ${{ github.workspace }}/postgresql-split/${{ inputs.filename-no-suffix }}.dump.gz.part
 
       - name: Install Python
         if: ${{ inputs.dump-database }}
