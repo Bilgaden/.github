@@ -55,24 +55,22 @@ jobs:
           echo "release:        $(sw_vers -productVersion)"
           echo "total-memory:   $(sysctl -n hw.memsize)"
 
-      - name: Maximize macOS Disk Space
-        run: |
-          echo "==> Available space before cleanup"
-          echo
-          df -h
-          sudo rm -rf /Users/runner/Library/Android/sdk
-          sudo rm -rf /usr/local/share/dotnet
-          sudo rm -rf /Applications/Xcode_*.app
-          sudo rm -rf /Users/runner/hostedtoolcache
-          rm -rf $(brew --cache)
-          
-          echo "==> Available space after cleanup"
-          echo
-          df -h
+      # - name: Maximize macOS Disk Space
+      #   run: |
+      #     echo "==> Available space before cleanup"
+      #     echo
+      #     df -h
+      #     sudo rm -rf /Users/runner/Library/Android/sdk
+      #     sudo rm -rf /usr/local/share/dotnet
+      #     sudo rm -rf /Applications/Xcode_*.app
+      #     sudo rm -rf /Users/runner/hostedtoolcache
+      #     rm -rf $(brew --cache)
+      #     echo "==> Available space after cleanup"
+      #     echo
+      #     df -h
 
       - name: Install coreutils from homebrew
         run: |
-          brew update
           brew install coreutils
           
       - name: Checkout repository
@@ -166,6 +164,42 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global http.postBuffer 104857600
+
+          git switch --orphan empty
+          git commit --allow-empty -m "Created Empty branch"
+          git push origin empty
+
+          git switch --orphan mongodb
+          git commit --allow-empty -m "Created MongoDB branch"
+          git push origin mongodb
+
+          git switch --orphan postgresql
+          git commit --allow-empty -m "Created PostgreSQL branch"
+          git push origin postgresql
+
+          git switch --orphan kidvin
+          git commit --allow-empty -m "Created KidVin branch"
+          git push origin kidvin
+          
+          git switch --orphan kid
+          git commit --allow-empty -m "Created Kid branch"
+          git push origin kid
+
+          git switch --orphan vin
+          git commit --allow-empty -m "Created Vin branch"
+          git push origin vin
+
+          git switch --orphan newkidvin
+          git commit --allow-empty -m "Created NewKidVin branch"
+          git push origin newkidvin
+          
+          git switch --orphan newkid
+          git commit --allow-empty -m "Created NewKid branch"
+          git push origin newkid
+
+          git switch --orphan newvin
+          git commit --allow-empty -m "Created NewVin branch"
+          git push origin newvin
           
           if git ls-remote --exit-code --heads origin ${{ inputs.filename-no-suffix }}.zip; then
               echo "Branch '${{ inputs.filename-no-suffix }}.zip' already exists, deleting and recreating..."
@@ -230,42 +264,3 @@ jobs:
           python ${{ github.workspace }}/UploadToDiscord-GitHub.py normal
         env:
           FILENAME: "${{ inputs.filename-no-suffix }}.zip"
-
-      - name: Set up latest ESStatistikListeModtag repository branches
-        working-directory: "${{ github.workspace }}/temp/"
-        run: |
-          git switch --orphan empty
-          git commit --allow-empty -m "Created Empty branch"
-          git push origin empty
-
-          git switch --orphan mongodb
-          git commit --allow-empty -m "Created MongoDB branch"
-          git push origin mongodb
-
-          git switch --orphan postgresql
-          git commit --allow-empty -m "Created PostgreSQL branch"
-          git push origin postgresql
-
-          git switch --orphan kidvin
-          git commit --allow-empty -m "Created KidVin branch"
-          git push origin kidvin
-          
-          git switch --orphan kid
-          git commit --allow-empty -m "Created Kid branch"
-          git push origin kid
-
-          git switch --orphan vin
-          git commit --allow-empty -m "Created Vin branch"
-          git push origin vin
-
-          git switch --orphan newkidvin
-          git commit --allow-empty -m "Created NewKidVin branch"
-          git push origin newkidvin
-          
-          git switch --orphan newkid
-          git commit --allow-empty -m "Created NewKid branch"
-          git push origin newkid
-
-          git switch --orphan newvin
-          git commit --allow-empty -m "Created NewVin branch"
-          git push origin newvin
