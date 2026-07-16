@@ -79,9 +79,7 @@ jobs:
             /requirements.txt
             /UploadToDiscord-GitHub.py
 
-            /postgresql-rs/Cargo.toml
-            /postgresql-rs/Cargo.lock
-            /postgresql-rs/src/main.rs
+            /postgresql-rs/
           sparse-checkout-cone-mode: false
           token: "${{ secrets.PAT }}"
 
