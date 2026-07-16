@@ -45,9 +45,7 @@ jobs:
           ref: "main"
           path: "${{ github.workspace }}/"
           sparse-checkout: |
-            /checkrows-rs/Cargo.toml
-            /checkrows-rs/Cargo.lock
-            /checkrows-rs/src/main.rs
+            /checkrows-rs/
           sparse-checkout-cone-mode: false
           token: "${{ secrets.PAT }}"
 
