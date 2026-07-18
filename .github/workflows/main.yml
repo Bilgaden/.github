@@ -96,6 +96,23 @@ jobs:
       discord-upload-limit: "${{ inputs.discord-upload-limit }}"
       github-upload-limit: "${{ inputs.github-upload-limit }}"
 
+  run-esyn:
+    name: Run ESyn
+    uses: ./.github/workflows/run-esyn.yml
+    secrets: inherit
+    with:
+      github-upload-limit: "${{ inputs.github-upload-limit }}"
+      worker-count: "32"
+      resume-id: "0"
+
+  run-tinglysning:
+    name: Run Tinglysning
+    uses: ./.github/workflows/run-tinglysning.yml
+    secrets: inherit
+    with:
+      remove-count-from-vins: "0"
+      github-upload-limit: "${{ inputs.github-upload-limit }}"
+
   # ---- TRIGGER NEW WORKFLOW ---- #
   # trigger-new-workflow:
   #   name: Trigger New Workflow

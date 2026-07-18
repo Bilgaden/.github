@@ -1,5 +1,19 @@
 name: Run ESyn
 on:
+  workflow_call:
+    inputs:
+      github-upload-limit:
+        description: 'GitHub Upload Limit (In MiB)'
+        required: true
+        type: string
+      worker-count:
+        description: 'Worker Count'
+        required: true
+        type: string
+      resume-id:
+        description: 'Resume ID'
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       github-upload-limit:
@@ -55,10 +69,8 @@ jobs:
           path: "${{ github.workspace }}/"
           sparse-checkout: |
             /Bilgaden-PostgreSQL-ESyn.sql
-            /ESyn-GitHub.py
-            /esyn/ESyn-GitHub.go
-            /go.mod
-            /go.sum
+
+            /esyn-rs/
           sparse-checkout-cone-mode: false
           token: "${{ secrets.PAT }}"
 
@@ -139,20 +151,16 @@ jobs:
           path: "${{ github.workspace }}/ESyn/"
           token: "${{ secrets.PAT }}"
 
-      - name: Install Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: 1.21
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Install Go dependencies
+      - name: Build ESyn Rust script
         run: |
-          go mod tidy
+          cargo build --release --manifest-path "${{ github.workspace }}/esyn-rs/Cargo.toml"
 
-      - name: Run ESyn Go script
+      - name: Run ESyn Rust script
         run: |
-          mv ${{ github.workspace }}/esyn/ESyn-GitHub.go ${{ github.workspace }}/ESyn-GitHub.go
-        
-          go run ${{ github.workspace }}/ESyn-GitHub.go
+          ${{ github.workspace }}/esyn-rs/target/release/esyn
         env:
           NUMBER_OF_WORKERS: ${{ inputs.worker-count }}
           RESUME_ID: ${{ inputs.resume-id }}

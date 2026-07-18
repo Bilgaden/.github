@@ -1,0 +1,215 @@
+name: Run Tinglysning
+
+on:
+  workflow_call:
+    inputs:
+      remove-count-from-vins:
+        description: 'Remove count from vins'
+        required: true
+        type: string
+      github-upload-limit:
+        description: 'GitHub Upload Limit (In MiB)'
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      remove-count-from-vins:
+        description: 'Remove count from vins'
+        required: true
+        type: string
+        default: "0"
+      github-upload-limit:
+        description: 'GitHub Upload Limit (In MiB)'
+        required: true
+        type: string
+        default: "100"
+
+jobs:
+  run-tinglysning:
+    name: Run Tinglysning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Display runner information
+        run: |
+          echo "cpu-core:       $(nproc --all)"
+          echo "cpu-model:      $(grep 'model name' /proc/cpuinfo | head -1 | cut -d: -f2- | sed 's/^[[:space:]]*//')"
+          echo "hostname:       $(hostname)"
+          echo "kernel-release: $(uname -r)"
+          echo "kernel-version: $(uname -v)"
+          echo "name:           $(grep '^NAME=' /etc/os-release | head -1 | cut -d= -f2- | tr -d '\"')"
+          echo "platform:       $(uname -s)"
+          echo "release:        $(grep '^VERSION_ID=' /etc/os-release | head -1 | cut -d= -f2- | tr -d '\"')"
+          echo "total-memory:   $(grep MemTotal /proc/meminfo | awk '{print $2 * 1024}')"
+
+      - name: Set environment variables
+        run: |
+          echo "SHOULD_SPAWN_NEW_RUNNER=false" >> $GITHUB_ENV
+          echo "REMOVE_COUNT_FROM_VINS=${{ inputs.remove-count-from-vins }}" >> $GITHUB_ENV
+
+          echo "EXIST_TINGLYSNING_BRANCH=false" >> $GITHUB_ENV
+          echo "EXIST_TINGLYSNING_TEMP_BRANCH=false" >> $GITHUB_ENV
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          repository: "${{ github.repository_owner }}/ESStatistikListeParser-GitHub"
+          ref: "main"
+          path: "${{ github.workspace }}/"
+          sparse-checkout: |
+            /Bilgaden-PostgreSQL-Tinglysning.sql
+
+            /tinglysning-rs/
+          sparse-checkout-cone-mode: false
+          token: "${{ secrets.PAT }}"
+
+      - name: Checkout Bilgaden repository
+        uses: actions/checkout@v7
+        with:
+          repository: "${{ github.repository_owner }}/Bilgaden"
+          ref: "main"
+          path: "${{ github.workspace }}/temp/"
+          sparse-checkout: |
+            !/*
+          sparse-checkout-cone-mode: false
+          token: "${{ secrets.PAT }}"
+
+      - name: Set up Git
+        working-directory: "${{ github.workspace }}/temp/"
+        run: |
+          gh auth login --with-token <<< "${{ secrets.PAT }}"
+
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global http.postBuffer 104857600
+
+          if git ls-remote --exit-code --heads origin tinglysning; then
+              echo "EXIST_TINGLYSNING_BRANCH=true" >> $GITHUB_ENV
+          else
+              echo "Branch 'tinglysning' does not exist, creating..."
+
+              git switch --orphan tinglysning
+              git commit --allow-empty -m "Created Tinglysning branch"
+              git push origin tinglysning
+          fi
+
+          if git ls-remote --exit-code --heads origin tinglysning-temp; then
+              echo "EXIST_TINGLYSNING_TEMP_BRANCH=true" >> $GITHUB_ENV
+          else
+              echo "Branch 'tinglysning-temp' does not exist, creating..."
+
+              git switch --orphan tinglysning-temp
+              git commit --allow-empty -m "Created Tinglysning-Temp branch"
+              git push origin tinglysning-temp
+          fi
+
+          rm -rf ${{ github.workspace }}/temp/
+
+      - name: Checkout Bilgaden repository (Tinglysning-branch)
+        if: ${{ (env.EXIST_TINGLYSNING_BRANCH == 'false' && env.EXIST_TINGLYSNING_TEMP_BRANCH == 'false') || (env.EXIST_TINGLYSNING_BRANCH == 'true' && env.EXIST_TINGLYSNING_TEMP_BRANCH == 'false') }}
+        uses: actions/checkout@v7
+        with:
+          repository: "${{ github.repository_owner }}/Bilgaden"
+          ref: "tinglysning"
+          path: "${{ github.workspace }}/temp/"
+          token: "${{ secrets.PAT }}"
+
+      - name: Checkout Bilgaden repository (Tinglysning-temp-branch)
+        if: ${{ env.EXIST_TINGLYSNING_TEMP_BRANCH == 'true' && env.EXIST_TINGLYSNING_BRANCH == 'true' }}
+        uses: actions/checkout@v7
+        with:
+          repository: "${{ github.repository_owner }}/Bilgaden"
+          ref: "tinglysning-temp"
+          path: "${{ github.workspace }}/temp/"
+          token: "${{ secrets.PAT }}"
+
+      - name: Stitch dump back together
+        if: ${{ env.EXIST_TINGLYSNING_BRANCH == 'true' || env.EXIST_TINGLYSNING_TEMP_BRANCH == 'true' }}
+        working-directory: "${{ github.workspace }}/temp/"
+        run: |
+          cat ${{ github.workspace }}/temp/*.part* > "${{ github.workspace }}/tinglysning.dump.gz"
+          file "${{ github.workspace }}/tinglysning.dump.gz"
+
+          rm -rf ${{ github.workspace }}/temp/
+
+      - name: Checkout Bilgaden repository (Tinglysning-temp-branch)
+        uses: actions/checkout@v7
+        with:
+          repository: "${{ github.repository_owner }}/Bilgaden"
+          ref: "tinglysning-temp"
+          path: "${{ github.workspace }}/temp/"
+          sparse-checkout: |
+            !/*
+          sparse-checkout-cone-mode: false
+          token: "${{ secrets.PAT }}"
+
+      - name: Set up PostgreSQL
+        uses: ankane/setup-postgres@v1
+        with:
+          postgres-version: 18
+          database: runner
+
+      - name: Import schema into PostgreSQL
+        run: |
+          psql -q -f ${{ github.workspace }}/Bilgaden-PostgreSQL-Tinglysning.sql
+
+      - name: Import dump into PostgreSQL
+        if: ${{ env.EXIST_TINGLYSNING_BRANCH == 'true' || env.EXIST_TINGLYSNING_TEMP_BRANCH == 'true' }}
+        run: |
+          pg_restore --data-only --no-owner --no-privileges -d bilgaden "${{ github.workspace }}/tinglysning.dump.gz"
+
+          rm -rf ${{ github.workspace }}/tinglysning.dump.gz
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Tinglysning Rust script
+        run: |
+          cargo build --release --manifest-path "${{ github.workspace }}/tinglysning-rs/Cargo.toml"
+
+      - name: Run Tinglysning Rust script
+        run: |
+          ${{ github.workspace }}/tinglysning-rs/target/release/tinglysning
+        env:
+          REMOVE_COUNT_FROM_VINS: ${{ env.REMOVE_COUNT_FROM_VINS }}
+
+      - name: Dump the entire database
+        run: |
+          pg_dump --compress=gzip:9 --no-owner --no-privileges -Fc -d bilgaden -f ${{ github.workspace }}/tinglysning.dump.gz
+
+          dropdb --force bilgaden
+
+      - name: Split dump-file into temp-directory
+        run: |
+          split -d -b ${{ inputs.github-upload-limit }}m ${{ github.workspace }}/tinglysning.dump.gz ${{ github.workspace }}/temp/tinglysning.dump.gz.part
+
+      - name: Upload dump-file to GitHub Tinglysning-temp-branch
+        working-directory: "${{ github.workspace }}/temp/"
+        run: |
+          git add --sparse .
+          git commit -m "Uploaded tinglysning"
+          git push
+
+      - name: Rename Tinglysning-temp branch to Tinglysning and delete Tinglysning-temp branch
+        working-directory: "${{ github.workspace }}/temp/"
+        run: |
+          git fetch origin tinglysning-temp:tinglysning
+          git push -u origin tinglysning --force
+
+          git push origin --delete tinglysning-temp
+
+      - name: Trigger next Runner
+        if: ${{ env.SHOULD_SPAWN_NEW_RUNNER == 'true' }}
+        uses: actions/github-script@v8
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'run-tinglysning.yml',
+              ref: 'main',
+              inputs: {
+                'remove-count-from-vins': '${{ env.REMOVE_COUNT_FROM_VINS }}',
+                'github-upload-limit': '${{ inputs.github-upload-limit }}'
+              }
+            })
+          github-token: ${{ secrets.PAT }}
