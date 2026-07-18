@@ -155,7 +155,7 @@ jobs:
       - name: Import dump into PostgreSQL
         if: ${{ env.EXIST_TINGLYSNING_BRANCH == 'true' || env.EXIST_TINGLYSNING_TEMP_BRANCH == 'true' }}
         run: |
-          pg_restore --data-only --no-owner --no-privileges -d bilgaden "${{ github.workspace }}/tinglysning.dump.gz"
+          pg_restore --data-only --no-owner --no-privileges -d bilgaden --schema tinglysning "${{ github.workspace }}/tinglysning.dump.gz"
 
           rm -rf ${{ github.workspace }}/tinglysning.dump.gz
 
@@ -174,7 +174,7 @@ jobs:
 
       - name: Dump the entire database
         run: |
-          pg_dump --compress=gzip:9 --no-owner --no-privileges -Fc -d bilgaden -f ${{ github.workspace }}/tinglysning.dump.gz
+          pg_dump --compress=gzip:9 --no-owner --no-privileges -Fc -d bilgaden --schema tinglysning -f ${{ github.workspace }}/tinglysning.dump.gz
 
           dropdb --force bilgaden
 
