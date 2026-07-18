@@ -98,6 +98,8 @@ jobs:
 
   run-esyn:
     name: Run ESyn
+    needs: get-latest-esstatistiklistemodtag-zip-file
+    if: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.has-found-new-zip-file == '1' }}
     uses: ./.github/workflows/run-esyn.yml
     secrets: inherit
     with:
@@ -107,6 +109,8 @@ jobs:
 
   run-tinglysning:
     name: Run Tinglysning
+    needs: get-latest-esstatistiklistemodtag-zip-file
+    if: ${{ needs.get-latest-esstatistiklistemodtag-zip-file.outputs.has-found-new-zip-file == '1' }}
     uses: ./.github/workflows/run-tinglysning.yml
     secrets: inherit
     with:
