@@ -208,11 +208,11 @@ jobs:
                   git branch -D ${{ inputs.filename-no-suffix }}.zip
               fi
               git push origin --delete ${{ inputs.filename-no-suffix }}.zip
-              git checkout -b ${{ inputs.filename-no-suffix }}.zip
+              git checkout -b ${{ inputs.filename-no-suffix }}.zip origin/main
           else
               echo "Branch '${{ inputs.filename-no-suffix }}.zip' does not exist, creating..."
-              
-              git checkout -b ${{ inputs.filename-no-suffix }}.zip
+
+              git checkout -b ${{ inputs.filename-no-suffix }}.zip origin/main
           fi
 
           git push -u origin ${{ inputs.filename-no-suffix }}.zip
