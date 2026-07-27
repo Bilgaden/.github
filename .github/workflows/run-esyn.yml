@@ -141,7 +141,7 @@ jobs:
 
       - name: Import the entire database
         run: |
-          pg_restore -1 --no-owner --no-privileges -d bilgaden --schema '"esynSynsrapport"' "${{ github.workspace }}/ESyn/esyn.dump.gz"
+          pg_restore -1 --no-owner --no-privileges -d bilgaden "${{ github.workspace }}/ESyn/esyn.dump.gz"
 
       - name: Checkout Bilgaden repository (ESyn-temp-branch)
         uses: actions/checkout@v7
