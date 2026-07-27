@@ -141,7 +141,7 @@ jobs:
 
       - name: Import the entire database
         run: |
-          pg_restore -1 --no-owner --no-privileges -d bilgaden "${{ github.workspace }}/ESyn/esyn.dump.gz"
+          pg_restore -1 --no-owner --no-privileges -d bilgaden --schema '"esynSynsrapport"' "${{ github.workspace }}/ESyn/esyn.dump.gz"
 
       - name: Checkout Bilgaden repository (ESyn-temp-branch)
         uses: actions/checkout@v7
@@ -167,14 +167,14 @@ jobs:
 
       - name: Dump the entire database
         run: |
-          pg_dump --compress=gzip:9 --no-owner --no-privileges -Fc -d bilgaden -f ${{ github.workspace }}/bilgaden.dump.gz
+          pg_dump --compress=gzip:9 --no-owner --no-privileges -Fc -d bilgaden --schema '"esynSynsrapport"' -f ${{ github.workspace }}/esyn.dump.gz
 
           dropdb --force bilgaden
 
       - name: Split SQL-file
         run: |
           mkdir -p ${{ github.workspace }}/postgresql-split
-          split -d -b ${{ inputs.github-upload-limit }}m ${{ github.workspace }}/bilgaden.dump.gz ${{ github.workspace }}/ESyn/bilgaden.dump.gz.part
+          split -d -b ${{ inputs.github-upload-limit }}m ${{ github.workspace }}/esyn.dump.gz ${{ github.workspace }}/ESyn/esyn.dump.gz.part
 
       - name: Upload SQL-file to GitHub ESyn-temp-branch
         working-directory: "${{ github.workspace }}/ESyn/"
