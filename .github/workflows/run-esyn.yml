@@ -35,31 +35,37 @@ on:
 jobs:
   esyn:
     name: Run ESyn
-    runs-on: ubuntu-latest
+    runs-on: macos-26-intel
     steps:
       - name: Display runner information
         run: |
-          echo "cpu-core:       $(nproc --all)"
-          echo "cpu-model:      $(grep 'model name' /proc/cpuinfo | head -1 | cut -d: -f2- | sed 's/^[[:space:]]*//')"
+          echo "cpu-core:       $(sysctl -n hw.ncpu)"
+          echo "cpu-model:      $(sysctl -n machdep.cpu.brand_string)"
           echo "hostname:       $(hostname)"
           echo "kernel-release: $(uname -r)"
           echo "kernel-version: $(uname -v)"
-          echo "name:           $(grep '^NAME=' /etc/os-release | head -1 | cut -d= -f2- | tr -d '\"')"
+          echo "name:           $(sw_vers -productName)"
           echo "platform:       $(uname -s)"
-          echo "release:        $(grep '^VERSION_ID=' /etc/os-release | head -1 | cut -d= -f2- | tr -d '\"')"
-          echo "total-memory:   $(grep MemTotal /proc/meminfo | awk '{print $2 * 1024}')"
+          echo "release:        $(sw_vers -productVersion)"
+          echo "total-memory:   $(sysctl -n hw.memsize)"
+          
+      # - name: Maximize macOS Disk Space
+      #   run: |
+      #     echo "==> Available space before cleanup"
+      #     echo
+      #     df -h
+      #     sudo rm -rf /Users/runner/Library/Android/sdk
+      #     sudo rm -rf /usr/local/share/dotnet
+      #     sudo rm -rf /Applications/Xcode_*.app
+      #     sudo rm -rf /Users/runner/hostedtoolcache
+      #     rm -rf $(brew --cache)
+      #     echo "==> Available space after cleanup"
+      #     echo
+      #     df -h
 
-      - name: Maximize build space
-        uses: AdityaGarg8/remove-unwanted-software@v5
-        with:
-          remove-dotnet: "true"
-          remove-android: "true"
-          remove-haskell: "true"
-          remove-codeql: "true"
-          remove-docker-images: "true"
-          remove-large-packages: "true"
-          remove-cached-tools: "true"
-          remove-swapfile: "true"
+      - name: Install coreutils from homebrew
+        run: |
+          brew install coreutils
 
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -174,7 +180,7 @@ jobs:
       - name: Split SQL-file
         run: |
           mkdir -p ${{ github.workspace }}/postgresql-split
-          split -d -b ${{ inputs.github-upload-limit }}m ${{ github.workspace }}/esyn.dump.gz ${{ github.workspace }}/ESyn/esyn.dump.gz.part
+          gsplit -d -b ${{ inputs.github-upload-limit }}m ${{ github.workspace }}/esyn.dump.gz ${{ github.workspace }}/ESyn/esyn.dump.gz.part
 
       - name: Upload SQL-file to GitHub ESyn-temp-branch
         working-directory: "${{ github.workspace }}/ESyn/"
