@@ -46,16 +46,16 @@ jobs:
     steps:
       - name: Display runner information
         run: |
-          echo "cpu-core:       $(nproc --all)"
-          echo "cpu-model:      $(grep 'model name' /proc/cpuinfo | head -1 | cut -d: -f2- | sed 's/^[[:space:]]*//')"
+          echo "cpu-core:       $(sysctl -n hw.ncpu)"
+          echo "cpu-model:      $(sysctl -n machdep.cpu.brand_string)"
           echo "hostname:       $(hostname)"
           echo "kernel-release: $(uname -r)"
           echo "kernel-version: $(uname -v)"
-          echo "name:           $(grep '^NAME=' /etc/os-release | head -1 | cut -d= -f2- | tr -d '\"')"
+          echo "name:           $(sw_vers -productName)"
           echo "platform:       $(uname -s)"
-          echo "release:        $(grep '^VERSION_ID=' /etc/os-release | head -1 | cut -d= -f2- | tr -d '\"')"
-          echo "total-memory:   $(grep MemTotal /proc/meminfo | awk '{print $2 * 1024}')"
-          
+          echo "release:        $(sw_vers -productVersion)"
+          echo "total-memory:   $(sysctl -n hw.memsize)"
+      
       # - name: Maximize macOS Disk Space
       #   run: |
       #     echo "==> Available space before cleanup"
